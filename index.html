@@ -127,6 +127,10 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
 .event-result{min-height:48px;font-weight:700}
 @media(max-width:480px){.event-content{padding:20px 16px}.roulette-label{font-size:17px}.roulette-effects{grid-template-columns:1fr}.roulette-effect{padding:8px 10px}.roulette-pointer{top:-13px;width:23px;height:29px}.roulette-hub{font-size:24px}}
 .cell.force-choice{cursor:pointer;outline:3px solid var(--p2);outline-offset:-5px;box-shadow:inset 0 0 0 7px #55d6dc22}.cell.force-choice:hover{outline-color:var(--gold)}
+/* 차례가 바뀌면 현재 플레이어의 출발 방향을 아래쪽으로 회전 */
+.board-frame{overflow:hidden}
+.board{transform:rotate(var(--board-angle,0deg));transform-origin:center}
+.cell-content{position:absolute;inset:0;display:grid;place-items:center;transform:rotate(var(--piece-angle,0deg));transform-origin:center;pointer-events:none}
 </style>
 </head>
 <body>
@@ -175,6 +179,10 @@ const $=id=>document.getElementById(id);
 
 let gameRun=0;
 let wheelRotation=0;
+let boardAngle=0;
+const OPPOSITE={up:'down',down:'up',left:'right',right:'left'};
+function boardDirection(direction){return Math.round(boardAngle/180)%2?OPPOSITE[direction]:direction}
+function moveOnScreen(direction){return move(boardDirection(direction))}
 const liveAnimations=new Set();
 const motionNodes=new Set();
 function later(callback,delay){const run=gameRun;return setTimeout(()=>{if(run===gameRun)callback()},delay)}
@@ -185,6 +193,20 @@ async function playMotion(node,keyframes,options){
   try{await animation.finished;return true}catch{return false}finally{liveAnimations.delete(animation);animation.cancel()}
 }
 function cancelMotion(){gameRun++;for(const animation of liveAnimations)animation.cancel();liveAnimations.clear();for(const node of motionNodes)node.remove();motionNodes.clear();$('board').classList.remove('goal-arriving')}
+async function rotateBoardForTurn(){
+  const run=gameRun,board=$('board'),from=boardAngle;
+  const flipped=state.current===0;
+  if(Boolean(Math.round(from/180)%2)===flipped)return true;
+  boardAngle=from+180;
+  board.style.setProperty('--board-angle',boardAngle+'deg');
+  board.style.setProperty('--piece-angle',-boardAngle+'deg');
+  const options={duration:720,easing:'cubic-bezier(.4,0,.2,1)'};
+  const frames=[{angle:from,scale:1,offset:0},{angle:from+45,scale:.70,offset:.25},{angle:from+135,scale:.70,offset:.75},{angle:boardAngle,scale:1,offset:1}];
+  const animations=[playMotion(board,frames.map(frame=>({transform:'rotate('+frame.angle+'deg) scale('+frame.scale+')',offset:frame.offset})),options)];
+  for(const content of board.querySelectorAll('.cell-content'))animations.push(playMotion(content,frames.map(frame=>({transform:'rotate('+(-frame.angle)+'deg)',offset:frame.offset})),options));
+  const completed=await Promise.all(animations);
+  return run===gameRun&&completed.every(Boolean);
+}
 function boardCell(index){return $('board').querySelector('[data-index="'+index+'"]')}
 async function animatePawn(playerIndex,destination,bounceDirection){
   const run=gameRun,source=boardCell(state.players[playerIndex].pos)?.querySelector('.pawn'),target=boardCell(destination);
@@ -195,7 +217,7 @@ async function animatePawn(playerIndex,destination,bounceDirection){
   ghost.setAttribute('aria-hidden','true');document.body.append(ghost);motionNodes.add(ghost);source.style.visibility='hidden';
   try{
     if(bounceDirection){
-      const rect=boardCell(state.players[playerIndex].pos).getBoundingClientRect(),d=DIRS[bounceDirection],bx=d.dc*rect.width*.40,by=d.dr*rect.height*.40;
+      const rect=boardCell(state.players[playerIndex].pos).getBoundingClientRect(),d=DIRS[boardDirection(bounceDirection)],bx=d.dc*rect.width*.40,by=d.dr*rect.height*.40;
       const squish=d.dc?'scale(.84,1.10)':'scale(1.10,.84)';
       const completed=await playMotion(ghost,[{transform:'translate(0,0) scale(1)',offset:0},{transform:'translate('+bx+'px,'+by+'px) '+squish,offset:.40},{transform:'translate('+(-bx*.15)+'px,'+(-by*.15)+'px) scale(1.08)',offset:.70},{transform:'translate(0,0) scale(1)',offset:1}],{duration:440,easing:'ease-out'});
       if(!completed||run!==gameRun)return false;
@@ -245,7 +267,7 @@ function renderBoard(){
     const eventIndex=state.events.indexOf(i);if(eventIndex>=0){cell.classList.add('event-cell');const mark=document.createElement('span');mark.className='event-mark';mark.setAttribute('aria-hidden','true');cell.append(mark);cell.setAttribute('aria-label',cell.getAttribute('aria-label')+', 이벤트 '+(eventIndex+1))}
     for(let p=0;p<2;p++)if(i===STARTS[p]){const mark=document.createElement('span');mark.className='start-mark';mark.style.setProperty('--start',p===0?'var(--p1)':'var(--p2)');const label=document.createElement('span');label.className='start-label';label.textContent='P'+(p+1)+' START';cell.append(mark,label)}
     for(let p=0;p<2;p++)if(state.players[p].pos===i){cell.append(pawn(p));if(p===activePlayer())cell.classList.add('current')}
-    board.append(cell);
+    const content=document.createElement('div');content.className='cell-content';content.append(...cell.childNodes);cell.append(content);board.append(cell);
   }
 }
 function renderScores(){
@@ -261,12 +283,18 @@ function blockedByRule(direction){const next=adjacent(state.players[state.curren
 function updateEventUses(){const box=$('event-uses');box.replaceChildren();state.events.forEach((cell,i)=>{for(let p=0;p<2;p++){const chip=document.createElement('span');chip.className='event-use'+(state.players[p].used.has(cell)?' used':'');chip.textContent='E'+(i+1)+' · P'+(p+1)+(state.players[p].used.has(cell)?' ✓':'');box.append(chip)}})}
 function updateControls(){
   const player=activePlayer(),color=player===0?'var(--p1)':'var(--p2)';$('control-panel').style.setProperty('--active-color',color);$('turn-player').textContent='플레이어 '+(player+1)+(state.forcedPlayer!==null?' · 강제 이동':'');$('moves-left').textContent=state.phase==='force-select'?'1':['move','animating','event','roulette'].includes(state.phase)?String(state.movesLeft):'—';$('roll-button').disabled=state.phase!=='roll';
-  for(const button of document.querySelectorAll('[data-direction]'))button.disabled=state.phase==='force-select'?!forcedMoveChoices().some(choice=>choice.direction===button.dataset.direction):state.phase!=='move'||state.movesLeft<=0||blockedByRule(button.dataset.direction);
-  $('turn-sub').textContent=state.phase==='force-select'?'강제 이동할 플레이어가 방향 버튼이나 표시된 칸을 선택하세요.':state.phase==='roll'?'주사위를 굴려 탐사를 시작하세요.':state.phase==='move'?'방향을 골라 한 칸씩 이동하세요.':state.phase==='event'?'이벤트 룰렛 결과를 기다리는 중입니다.':state.phase==='wall-select'?'보드에서 인접한 두 칸을 차례로 선택하세요.':state.phase==='intro'?'목적지 별이 도착하는 중입니다.':state.phase==='collision'?'벽에 부딪혀 출발칸으로 돌아가는 중입니다.':state.phase==='animating'?'말이 다음 칸으로 이동하는 중입니다.':state.phase==='roulette'?'룰렛이 멈출 때까지 기다려 주세요.':'처리 중입니다.';renderScores();updateEventUses();
+  for(const button of document.querySelectorAll('[data-direction]')){const direction=boardDirection(button.dataset.direction);button.disabled=state.phase==='force-select'?!forcedMoveChoices().some(choice=>choice.direction===direction):state.phase!=='move'||state.movesLeft<=0||blockedByRule(direction)}
+  $('turn-sub').textContent=state.phase==='turn-rotation'?'차례에 맞춰 게임판을 돌리는 중입니다.':state.phase==='force-select'?'강제 이동할 플레이어가 방향 버튼이나 표시된 칸을 선택하세요.':state.phase==='roll'?'주사위를 굴려 탐사를 시작하세요.':state.phase==='move'?'방향을 골라 한 칸씩 이동하세요.':state.phase==='event'?'이벤트 룰렛 결과를 기다리는 중입니다.':state.phase==='wall-select'?'보드에서 인접한 두 칸을 차례로 선택하세요.':state.phase==='intro'?'목적지 별이 도착하는 중입니다.':state.phase==='collision'?'벽에 부딪혀 출발칸으로 돌아가는 중입니다.':state.phase==='animating'?'말이 다음 칸으로 이동하는 중입니다.':state.phase==='roulette'?'룰렛이 멈출 때까지 기다려 주세요.':'처리 중입니다.';renderScores();updateEventUses();
 }
 function setMessage(text){$('message').textContent=text}
 function renderAll(){renderBoard();updateControls();setDie(state.die)}
-function endTurn(){if(state.phase==='over')return;state.current=1-state.current;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();setMessage('플레이어 '+(state.current+1)+'의 차례입니다. 주사위를 굴리세요.');renderAll()}
+async function endTurn(){
+  if(state.phase==='over')return;
+  state.current=1-state.current;state.phase='turn-rotation';state.movesLeft=0;state.turnVisited=new Set();
+  setMessage('플레이어 '+(state.current+1)+'의 차례에 맞춰 판을 돌리고 있습니다.');renderAll();
+  if(!await rotateBoardForTurn())return;
+  state.phase='roll';setMessage('플레이어 '+(state.current+1)+'의 차례입니다. 주사위를 굴리세요.');updateControls();
+}
 function rollDice(){
   if(state.phase!=='roll')return;state.phase='rolling';updateControls();$('die').classList.add('rolling');$('roll-button').textContent='탐색 중…';
   later(()=>{const player=state.players[state.current],raw=1+randomInt(6);state.die=raw;state.movesLeft=raw;state.turnVisited=new Set([player.pos]);state.phase='move';$('die').classList.remove('rolling');$('roll-button').textContent='주사위 굴리기';setMessage('주사위 '+raw+'! 이동할 방향을 선택하세요.');renderAll()},480)
@@ -278,7 +306,7 @@ async function collide(direction){
 }
 
 function scoreGoal(scorer=state.current){state.phase='pause';state.movesLeft=0;state.players[scorer].score++;setMessage('플레이어 '+(scorer+1)+'이 목적지에 도착해 1점을 얻었습니다!');renderAll();if(state.players[scorer].score>=TARGET_SCORE){state.phase='over';renderAll();later(()=>{$('win-title').textContent='플레이어 '+(scorer+1)+' 승리!';$('win-copy').textContent=state.round+'라운드의 기억과 추리 끝에 먼저 6점을 획득했습니다.';$('win-dialog').showModal()},500);return}later(()=>startNextRound(scorer),950)}
-function startNextRound(scorer){restoreTemporaryWalls();state.round++;state.current=1-scorer;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();state.players.forEach((p,i)=>{p.pos=STARTS[i];p.lastPos=null;p.used=new Set()});placeRoundItems();setMessage('새 라운드의 목적지를 배치했습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)}
+async function startNextRound(scorer){restoreTemporaryWalls();state.round++;state.current=1-scorer;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();state.players.forEach((p,i)=>{p.pos=STARTS[i];p.lastPos=null;p.used=new Set()});placeRoundItems();setMessage('새 라운드의 목적지를 배치했습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});if(await rotateBoardForTurn())revealGoal(gameRun)}
 async function move(direction){
   if(state.phase==='force-select'){await chooseForcedMove(direction);return}
   if(state.phase!=='move'||blockedByRule(direction))return;
@@ -381,19 +409,19 @@ async function spinEvent(){
 }
 
 
-function newGame(){
+async function newGame(){
   cancelMotion();wheelRotation=0;
-  state.round=1;state.current=randomInt(2);state.phase='roll';state.movesLeft=0;state.die=1;state.turnVisited=new Set();state.tempInstalled=new Set();state.tempRemoved=new Set();state.wallMode=null;state.wallFirst=null;state.forcedPlayer=null;state.players=[{score:0,pos:STARTS[0],lastPos:null,used:new Set()},{score:0,pos:STARTS[1],lastPos:null,used:new Set()}];generateMaze();placeRoundItems();if($('win-dialog').open)$('win-dialog').close();if($('event-dialog').open)$('event-dialog').close();setMessage('새로운 보이지 않는 미로가 생성되었습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)
+  state.round=1;state.current=randomInt(2);state.phase='roll';state.movesLeft=0;state.die=1;state.turnVisited=new Set();state.tempInstalled=new Set();state.tempRemoved=new Set();state.wallMode=null;state.wallFirst=null;state.forcedPlayer=null;state.players=[{score:0,pos:STARTS[0],lastPos:null,used:new Set()},{score:0,pos:STARTS[1],lastPos:null,used:new Set()}];generateMaze();placeRoundItems();if($('win-dialog').open)$('win-dialog').close();if($('event-dialog').open)$('event-dialog').close();setMessage('새로운 보이지 않는 미로가 생성되었습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});if(await rotateBoardForTurn())revealGoal(gameRun)
 }
 $('roll-button').addEventListener('click',rollDice);$('spin-button').addEventListener('click',spinEvent);
-for(const button of document.querySelectorAll('[data-direction]'))button.addEventListener('click',()=>move(button.dataset.direction));
+for(const button of document.querySelectorAll('[data-direction]'))button.addEventListener('click',()=>moveOnScreen(button.dataset.direction));
 $('board').addEventListener('click',event=>{const cell=event.target.closest('.cell');if(!cell)return;const target=Number(cell.dataset.index);if(state.phase==='wall-select'){chooseWallCell(target);return}if(state.phase!=='move'&&state.phase!=='force-select')return;const at=state.players[activePlayer()].pos;for(const name of Object.keys(DIRS))if(adjacent(at,name)===target){move(name);break}});
 $('rules-button').addEventListener('click',()=>$('rules-dialog').showModal());
 for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',() => $(button.dataset.close).close());
 $('new-game-button').addEventListener('click',newGame);$('play-again-button').addEventListener('click',newGame);
 $('event-dialog').addEventListener('cancel',event=>event.preventDefault());
 $('rules-dialog').addEventListener('click',event=>{if(event.target===$('rules-dialog'))$('rules-dialog').close()});
-document.addEventListener('keydown',event=>{if((state.phase!=='move'&&state.phase!=='force-select')||$('rules-dialog').open||$('event-dialog').open||$('win-dialog').open)return;const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(map[event.key]){event.preventDefault();move(map[event.key])}});
+document.addEventListener('keydown',event=>{if((state.phase!=='move'&&state.phase!=='force-select')||$('rules-dialog').open||$('event-dialog').open||$('win-dialog').open)return;const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(map[event.key]){event.preventDefault();moveOnScreen(map[event.key])}});
 function startGame(){
   if(!$('game-screen').hidden)return;
   $('start-screen').hidden=true;
