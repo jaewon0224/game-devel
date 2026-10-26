@@ -127,15 +127,12 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
 .event-result{min-height:48px;font-weight:700}
 @media(max-width:480px){.event-content{padding:20px 16px}.roulette-label{font-size:17px}.roulette-effects{grid-template-columns:1fr}.roulette-effect{padding:8px 10px}.roulette-pointer{top:-13px;width:23px;height:29px}.roulette-hub{font-size:24px}}
 .cell.force-choice{cursor:pointer;outline:3px solid var(--p2);outline-offset:-5px;box-shadow:inset 0 0 0 7px #55d6dc22}.cell.force-choice:hover{outline-color:var(--gold)}
-/* 차례가 바뀌면 현재 플레이어의 출발 방향을 아래쪽으로 회전 */
-.board-frame{overflow:hidden}
-.board{transform:rotate(var(--board-angle,0deg));transform-origin:center}
-.cell-content{position:absolute;inset:0;display:grid;place-items:center;transform:rotate(var(--piece-angle,0deg));transform-origin:center;pointer-events:none}
 </style>
+<link rel="stylesheet" href="online.css">
 </head>
 <body>
 <main id="start-screen" class="start-screen" aria-labelledby="start-title">
-  <div class="start-content">
+  <div id="start-content" class="start-content">
     <div class="start-emblem" aria-hidden="true">
       <svg viewBox="0 0 168 168" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M28 28H140V140H28V28Z" stroke="#37626f" stroke-width="2"/>
@@ -146,28 +143,69 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
         <path d="M126 57L130 65L139 66L132 72L134 81L126 77L118 81L120 72L113 66L122 65L126 57Z" fill="#ffd166"/>
       </svg>
     </div>
-    <p class="start-eyebrow">MEMORY · RISK · RACE</p>
+    
     <h1 id="start-title" class="start-title">보이지 않는 미로</h1>
-    <p class="start-description">보이지 않는 벽을 기억하고, 상대의 움직임을 읽어보세요.<br>목적지에 먼저 도착해 승리를 향한 한 점을 얻으세요.</p>
-    <div class="start-facts"><span><b>2인</b> 함께 플레이</span><span><b>6×6</b> 숨겨진 미로</span><span><b>6점</b> 먼저 얻으면 승리</span></div>
-    <div class="start-actions"><button id="start-button" class="start-button" type="button">시작하기 <span aria-hidden="true">→</span></button><button id="start-rules-button" class="start-rules-button" type="button">게임 규칙 먼저 보기</button></div>
-    <p class="start-footnote">한 화면에서 번갈아 플레이해요.<br>방향 버튼과 키보드 방향키로 이동할 수 있어요.</p>
+    <div class="start-actions">
+      <button id="start-button" class="start-button" type="button" aria-haspopup="dialog" aria-controls="mode-dialog">플레이 <span aria-hidden="true">→</span></button>
+      <div class="start-extra-modes">
+        <button id="tutorial-button" class="start-mode-placeholder" type="button" disabled>튜토리얼</button>
+        <button id="bot-battle-button" class="start-mode-placeholder start-mode-enabled" type="button" aria-haspopup="dialog" aria-controls="bot-difficulty-dialog">봇하고 대결</button>
+      </div>
+      <button id="start-rules-button" class="start-rules-button" type="button">게임 규칙 보기</button>
+    </div>
   </div>
+  <section id="room-lobby" class="room-lobby" hidden aria-labelledby="room-title">
+    <span class="kicker">ONLINE · TWO PLAYERS</span><h1 id="room-title">친구를 기다리는 중</h1><p>아래 코드를 친구에게 알려 주세요.</p>
+    <div id="room-code" class="room-code"></div><button id="copy-room-button" class="ghost-button" type="button">방 코드 복사</button>
+    <div class="room-seats"><div id="room-player-0" class="room-seat"></div><div id="room-player-1" class="room-seat"></div></div>
+    <p id="room-wait-note"></p><button id="room-start-button" class="room-primary" type="button" disabled>게임 시작</button>
+    <div class="room-lobby-actions"><button id="leave-room-button" class="ghost-button" type="button">방 나가기</button></div>
+  </section>
+  <p id="room-message" class="room-message" role="status" aria-live="polite"></p>
 </main>
 <main id="game-screen" class="shell" tabindex="-1" hidden>
-<header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><span class="kicker">MEMORY · RISK · RACE</span><h1>보이지 않는 미로</h1></div></div><div class="top-actions"><button id="rules-button" class="ghost-button" type="button">게임 규칙</button><button id="new-game-button" class="ghost-button" type="button">새 게임</button></div></header>
+<header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><h1>보이지 않는 미로</h1></div></div><div class="top-actions"><button id="home-button" class="ghost-button" type="button">시작 화면</button><button id="rules-button" class="ghost-button" type="button">게임 규칙</button><button id="new-game-button" class="ghost-button" type="button">새 게임</button></div></header>
+<p id="bot-match-status" class="bot-match-status" role="status" hidden></p>
+<div id="room-tools" class="room-tools" hidden><span>방 코드 <strong id="room-code-small"></strong></span><button id="copy-room-small" class="ghost-button" type="button">코드 복사</button><span id="my-player" class="online-you"></span><span id="connection-state" class="connection-state" role="status"></span><button id="leave-room-small" class="ghost-button" type="button">방 나가기</button></div>
 <div class="game-layout">
 <aside class="card score-panel"><span class="section-label">Match status</span><div class="round-line"><div><span class="section-label">Round</span><strong id="round-number">1</strong></div><small>먼저 6점 획득</small></div>
-<section id="player-card-0" class="player-card" data-player="0"><div class="player-head"><span class="player-name"><i class="token-mini"></i>플레이어 1</span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-0">0</b><span>/ 6 PTS</span></div><div id="score-pips-0" class="score-pips"></div><div id="effects-0" class="effects">적용 중인 효과 없음</div></section>
-<section id="player-card-1" class="player-card" data-player="1"><div class="player-head"><span class="player-name"><i class="token-mini"></i>플레이어 2</span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-1">0</b><span>/ 6 PTS</span></div><div id="score-pips-1" class="score-pips"></div><div id="effects-1" class="effects">적용 중인 효과 없음</div></section>
+<section id="player-card-0" class="player-card" data-player="0"><div class="player-head"><span class="player-name"><i class="token-mini"></i><span id="player-name-0">플레이어 1</span></span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-0">0</b><span>/ 6 PTS</span></div><div id="score-pips-0" class="score-pips"></div><div id="effects-0" class="effects">적용 중인 효과 없음</div></section>
+<section id="player-card-1" class="player-card" data-player="1"><div class="player-head"><span class="player-name"><i class="token-mini"></i><span id="player-name-1">플레이어 2</span></span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-1">0</b><span>/ 6 PTS</span></div><div id="score-pips-1" class="score-pips"></div><div id="effects-1" class="effects">적용 중인 효과 없음</div></section>
 <div class="legend"><span class="section-label">Board signals</span><div class="legend-list"><div class="legend-row"><i class="legend-icon">★</i>먼저 도착하면 1점</div><div class="legend-row"><i class="legend-icon">?</i>플레이어별 라운드당 1회</div><div class="legend-row"><i class="legend-icon">S</i>각 플레이어의 출발칸</div></div></div><div class="memory-note"><b>벽은 화면에 표시되지 않습니다.</b><br>상대의 이동과 충돌을 관찰하고 머리로 길을 기억하세요.</div></aside>
 <section class="card board-card"><div class="board-header"><div><span class="section-label">Live maze / 6 × 6</span><h2>탐사 보드</h2></div><span class="scanner"><i></i>WALL DATA HIDDEN</span></div><div class="board-frame"><div id="board" class="board" aria-label="6 곱하기 6 보이지 않는 미로 게임판"></div></div><div class="board-caption"><span>벽 충돌 시 출발점으로 즉시 복귀</span><span>같은 턴에 밟은 칸 재방문 금지</span></div></section>
 <aside class="card control-panel" id="control-panel"><span class="section-label">Turn console</span><div class="turn-display"><span class="section-label">Current explorer</span><div class="turn-title"><i class="turn-color"></i><strong id="turn-player">플레이어 1</strong></div><p id="turn-sub" class="turn-sub">주사위를 굴려 탐사를 시작하세요.</p></div><div class="dice-zone"><div id="die" class="die" aria-label="주사위 결과"></div><button id="roll-button" class="roll-button" type="button">주사위 굴리기</button></div><div class="move-counter">남은 이동 <b id="moves-left">—</b></div><div class="dpad-wrap"><div class="dpad" aria-label="이동 방향"><button class="direction up" data-direction="up" type="button" aria-label="위로 이동">↑</button><button class="direction left" data-direction="left" type="button" aria-label="왼쪽으로 이동">←</button><span class="direction-center">MOVE</span><button class="direction right" data-direction="right" type="button" aria-label="오른쪽으로 이동">→</button><button class="direction down" data-direction="down" type="button" aria-label="아래로 이동">↓</button></div></div><div class="message-box" aria-live="polite"><span class="message-title">SYSTEM MESSAGE</span><p id="message" class="message">새로운 미로가 생성되었습니다.</p></div><div class="event-status"><h3>이번 라운드 이벤트 사용 기록</h3><div id="event-uses" class="event-uses"></div></div></aside>
 </div>
 </main>
+<dialog id="bot-difficulty-dialog" class="mode-dialog" aria-labelledby="bot-difficulty-title">
+  <div class="dialog-top"><h2 id="bot-difficulty-title">봇 난이도 선택</h2><button class="close-button" data-close="bot-difficulty-dialog" type="button">닫기 ✕</button></div>
+  <div class="mode-content bot-difficulty-options">
+    <button id="bot-easy-button" class="bot-difficulty-option" data-bot-difficulty="easy" type="button"><strong>쉬움</strong><span>발견한 벽도 자주 잊고<br>이동 실수도 많이 해요.</span></button>
+    <button id="bot-medium-button" class="bot-difficulty-option" data-bot-difficulty="medium" type="button"><strong>중간</strong><span>길을 대체로 기억하지만<br>가끔 잊거나 실수해요.</span></button>
+    <button id="bot-hard-button" class="bot-difficulty-option" data-bot-difficulty="hard" type="button"><strong>어려움</strong><span>발견한 벽을 계속 기억하고<br>이벤트도 적극 활용해요.</span></button>
+  </div>
+</dialog>
+<dialog id="mode-dialog" class="mode-dialog" aria-labelledby="mode-title">
+  <div class="dialog-top"><h2 id="mode-title">플레이 방식 선택</h2><button class="close-button" data-close="mode-dialog" type="button" aria-label="플레이 방식 선택 닫기">닫기 ✕</button></div>
+  <div class="mode-content">
+    <div id="mode-choices" class="mode-choices">
+      <button id="multiplayer-button" class="mode-option" type="button"><span class="mode-icon" aria-hidden="true">↗</span><strong>멀티플레이</strong><span>각자의 기기에서<br>방 코드로 함께 플레이</span></button>
+      <button id="local-play-button" class="mode-option" type="button"><span class="mode-icon" aria-hidden="true">2P</span><strong>2인 플레이</strong><span>한 기기에서<br>번갈아 플레이</span></button>
+    </div>
+    <section id="online-options" class="room-options" hidden aria-labelledby="online-title">
+      <h2 id="online-title">친구와 온라인 플레이</h2>
+      <p>방을 만들고 6자리 코드를 공유하세요.<br>서로 다른 기기에서 각자 조작할 수 있어요.</p>
+      <button id="create-room-button" class="room-primary" type="button">방 만들기</button>
+      <form id="join-form" class="join-form"><label class="sr-only" for="join-code">6자리 방 코드</label><input id="join-code" placeholder="방 코드 6자리" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="6자리 방 코드"><button id="join-room-button" class="ghost-button" type="submit">방 참가하기</button></form>
+    </section>
+
+    <button id="mode-back-button" class="start-rules-button" type="button" hidden>← 플레이 방식 다시 선택</button>
+    <p id="mode-message" class="room-message" role="status" aria-live="polite"></p>
+  </div>
+</dialog>
 <dialog id="rules-dialog" class="rules-dialog"><div class="dialog-top"><h2>플레이 방법</h2><button class="close-button" data-close="rules-dialog" type="button">닫기 ✕</button></div><div class="rules-content"><div class="rules-grid"><section class="rule-card"><b>01 · 목표</b><p>보이지 않는 벽을 기억하며 목적지 ★에 먼저 도착하세요. 라운드 승자는 1점, 먼저 6점을 얻으면 최종 승리합니다.</p></section><section class="rule-card"><b>02 · 자신의 턴</b><p>주사위 수만큼 상하좌우로 한 칸씩 이동합니다. 이동 수를 모두 써야 하며 목적지 또는 벽에 닿으면 즉시 처리가 끝납니다.</p></section><section class="rule-card"><b>03 · 이동 제한</b><ul><li>같은 턴에 밟은 칸과 시작한 칸은 다시 밟을 수 없습니다.</li><li>상대의 현재 칸과 상대 출발칸에는 들어갈 수 없습니다.</li><li>대각선 이동은 불가능합니다.</li></ul></section><section class="rule-card"><b>04 · 보이지 않는 벽</b><p>벽 방향을 선택하면 출발칸으로 돌아가고 남은 이동을 잃습니다. 벽 배치는 라운드가 바뀌어도 유지됩니다.</p></section><section class="rule-card"><b>05 · 다음 라운드</b><p>양쪽 말을 출발칸으로 돌리고 목적지·이벤트 칸과 사용 기록을 초기화합니다. 직전 라운드에서 득점하지 못한 사람이 먼저 시작합니다.</p></section><section class="rule-card"><b>06 · 이벤트</b><p>각 이벤트 칸은 플레이어마다 라운드당 한 번 사용할 수 있습니다. 임시 벽 설치·제거는 라운드가 끝나면 복구되며, 벽 재구성 결과는 이후 라운드에도 유지됩니다. 이벤트 칸을 사용하면 남은 이동을 모두 잃고, 효과 처리가 끝난 뒤 상대의 차례로 넘어갑니다.</p></section></div><section class="rule-card" style="margin-top:12px"><b>룰렛 효과와 확률</b><ul><li><strong>28%</strong> — 판에 원하는 벽 하나 설치하기. 설치한 벽은 다음 라운드에 사라집니다.</li><li><strong>28%</strong> — 판에서 원하는 벽 하나 지우기. 지운 벽은 다음 라운드에 다시 생깁니다.</li><li><strong>14%</strong> — 판의 벽을 재구성하기. 새 벽 배치는 이후 라운드에도 계속 적용됩니다.</li><li><strong>30%</strong> — 강제 이동할 상대 플레이어가 직전에 온 길을 제외한 이동 가능한 방향을 직접 선택해 한 칸 이동합니다. 이동 가능한 방향이 없으면 이동 없이 효과가 끝납니다. 상대가 목적지에 도착하면 상대가 1점을 얻고 새 라운드를 시작합니다.</li></ul><p style="margin-top:9px">확률의 합은 100%입니다. 벽 설치로 모든 칸의 연결이 끊기는 위치는 선택할 수 없습니다.</p></section></div></dialog>
-<dialog id="event-dialog" class="event-dialog"><div class="event-content"><span class="section-label">Mystery signal detected</span><div class="roulette-shell"><span class="roulette-pointer" aria-hidden="true"></span><div id="roulette" class="roulette" role="img" aria-label="효과와 확률을 표시하는 룰렛"></div><span class="roulette-hub" aria-hidden="true">?</span></div><div id="roulette-effects" class="roulette-effects"></div><h3>이벤트 룰렛</h3><p>이 칸은 이번 라운드에 한 번만 사용할 수 있어요.</p><p id="event-result" class="event-result" aria-live="polite">룰렛을 돌려 효과를 확인하세요.</p><button id="spin-button" class="spin-button" type="button">룰렛 돌리기</button></div></dialog>
-<dialog id="win-dialog" class="win-dialog"><div class="win-content"><div class="trophy" aria-hidden="true">◆</div><span class="section-label">Maze conquered</span><h2 id="win-title">플레이어 1 승리!</h2><p id="win-copy"></p><button id="play-again-button" class="continue-button" type="button">새 게임 시작</button></div></dialog>
+<dialog id="event-dialog" class="event-dialog"><div class="event-content"><span class="section-label">Mystery signal detected</span><div class="roulette-shell"><span class="roulette-pointer" aria-hidden="true"></span><div id="roulette" class="roulette" role="img" aria-label="효과와 확률을 표시하는 룰렛"></div><span class="roulette-hub" aria-hidden="true">?</span></div><div id="roulette-effects" class="roulette-effects"></div><h3>이벤트 룰렛</h3><p>이 칸은 이번 라운드에 한 번만 사용할 수 있어요.</p><p id="event-result" class="event-result" aria-live="polite">룰렛을 돌려 효과를 확인하세요.</p><button id="spin-button" class="spin-button" type="button">룰렛 돌리기</button><p id="event-online-status" hidden></p><button id="event-leave-room-button" class="ghost-button" type="button" hidden>방 나가기</button></div></dialog>
+<dialog id="win-dialog" class="win-dialog"><div class="win-content"><div class="trophy" aria-hidden="true">◆</div><span class="section-label">Maze conquered</span><h2 id="win-title">플레이어 1 승리!</h2><p id="win-copy"></p><button id="play-again-button" class="continue-button" type="button">새 게임 시작</button><p><button id="win-leave-room-button" class="ghost-button" type="button" hidden>방 나가기</button></p></div></dialog>
+<script src="bot-ai.js"></script>
 <script>
 
 (()=>{'use strict';
@@ -177,12 +215,41 @@ const DIRS={up:{dr:-1,dc:0,label:'위'},down:{dr:1,dc:0,label:'아래'},left:{dr
 const state={round:1,current:0,phase:'roll',movesLeft:0,die:1,goal:1,events:[],passages:new Set(),turnVisited:new Set(),tempInstalled:new Set(),tempRemoved:new Set(),wallMode:null,wallFirst:null,forcedPlayer:null,players:[{score:0,pos:0,lastPos:null,used:new Set()},{score:0,pos:35,lastPos:null,used:new Set()}]};
 const $=id=>document.getElementById(id);
 
+
+const BOT_LABELS={easy:'쉬움',medium:'중간',hard:'어려움'};
+let botBrain=null,botDifficulty='medium',botTimer=null,botDriving=false,botWallPair=null;
+function playerName(index){return botBrain?(index===0?'나':'봇 ('+BOT_LABELS[botDifficulty]+')'):'플레이어 '+(index+1)}
+function isBotTurn(){return Boolean(botBrain&&activePlayer()===1&&!window.mazeOnline?.active())}
+function clearBotTimer(){if(botTimer!==null)clearTimeout(botTimer);botTimer=null}
+function botView(){return {round:state.round,current:state.current,phase:state.phase,movesLeft:state.movesLeft,goal:state.goal,events:[...state.events],wallMode:state.wallMode,turnVisited:[...state.turnVisited],players:state.players.map(p=>({pos:p.pos,lastPos:p.lastPos,score:p.score,used:[...p.used]}))}}
+function queueBotAction(){
+  if(!isBotTurn()){clearBotTimer();return}
+  if(botDriving||botTimer!==null||boardRotating||$('rules-dialog').open||!['roll','move','event','wall-select','force-select'].includes(state.phase))return;
+  const run=gameRun;botTimer=setTimeout(async()=>{
+    botTimer=null;if(run!==gameRun)return;
+    if(!isBotTurn()||boardRotating||$('rules-dialog').open){queueBotAction();return}
+    botDriving=true;
+    try{
+      if(state.phase==='roll')rollDice();
+      else if(state.phase==='move'){const direction=botBrain.chooseMove(botView());if(direction)await move(direction);else{state.phase='pause';setMessage('이동할 수 있는 방향이 없어 차례를 마칩니다.');renderAll();later(endTurn,350)}}
+      else if(state.phase==='force-select')await move(botBrain.chooseMove(botView(),forcedMoveChoices()));
+      else if(state.phase==='event')await spinEvent();
+      else if(state.phase==='wall-select'){
+        if(state.wallFirst===null){botWallPair=botBrain.chooseWall(botView());if(botWallPair)chooseWallCell(botWallPair[0]);else{state.wallMode=null;state.wallFirst=null;resumeAfterEvent('봇이 선택할 수 있는 벽이 없어 이벤트를 마칩니다.')}}
+        else if(botWallPair){const second=botWallPair[1];botWallPair=null;chooseWallCell(second)}
+      }
+    }finally{if(run===gameRun){botDriving=false;updateControls()}}
+  },botDifficulty==='easy'?850:botDifficulty==='medium'?650:500);
+}
+function goHome(){
+  if(window.mazeOnline?.active())return;
+  cancelMotion();botBrain=null;botWallPair=null;state.phase='menu';
+  for(const id of ['event-dialog','win-dialog','rules-dialog'])if($(id).open)$(id).close();
+  $('game-screen').hidden=true;$('start-screen').hidden=false;$('start-content').hidden=false;$('room-message').textContent='';$('start-button').focus();
+}
+
 let gameRun=0;
 let wheelRotation=0;
-let boardAngle=0;
-const OPPOSITE={up:'down',down:'up',left:'right',right:'left'};
-function boardDirection(direction){return Math.round(boardAngle/180)%2?OPPOSITE[direction]:direction}
-function moveOnScreen(direction){return move(boardDirection(direction))}
 const liveAnimations=new Set();
 const motionNodes=new Set();
 function later(callback,delay){const run=gameRun;return setTimeout(()=>{if(run===gameRun)callback()},delay)}
@@ -192,21 +259,35 @@ async function playMotion(node,keyframes,options){
   const animation=node.animate(keyframes,options);liveAnimations.add(animation);
   try{await animation.finished;return true}catch{return false}finally{liveAnimations.delete(animation);animation.cancel()}
 }
-function cancelMotion(){gameRun++;for(const animation of liveAnimations)animation.cancel();liveAnimations.clear();for(const node of motionNodes)node.remove();motionNodes.clear();$('board').classList.remove('goal-arriving')}
-async function rotateBoardForTurn(){
-  const run=gameRun,board=$('board'),from=boardAngle;
-  const flipped=state.current===0;
-  if(Boolean(Math.round(from/180)%2)===flipped)return true;
-  boardAngle=from+180;
-  board.style.setProperty('--board-angle',boardAngle+'deg');
-  board.style.setProperty('--piece-angle',-boardAngle+'deg');
-  const options={duration:720,easing:'cubic-bezier(.4,0,.2,1)'};
-  const frames=[{angle:from,scale:1,offset:0},{angle:from+45,scale:.70,offset:.25},{angle:from+135,scale:.70,offset:.75},{angle:boardAngle,scale:1,offset:1}];
-  const animations=[playMotion(board,frames.map(frame=>({transform:'rotate('+frame.angle+'deg) scale('+frame.scale+')',offset:frame.offset})),options)];
-  for(const content of board.querySelectorAll('.cell-content'))animations.push(playMotion(content,frames.map(frame=>({transform:'rotate('+(-frame.angle)+'deg)',offset:frame.offset})),options));
-  const completed=await Promise.all(animations);
-  return run===gameRun&&completed.every(Boolean);
+function cancelMotion(){gameRun++;clearBotTimer();botDriving=false;botWallPair=null;boardRotating=false;rotationTask=Promise.resolve();$('board').classList.remove('turn-rotating');$('board').setAttribute('aria-busy','false');for(const animation of liveAnimations)animation.cancel();liveAnimations.clear();for(const node of motionNodes)node.remove();motionNodes.clear();$('board').classList.remove('goal-arriving')}
+
+// Local shared-screen games face the player who is currently choosing a move.
+let boardRotation=0,boardRotating=false,rotationTask=Promise.resolve();
+const OPPOSITE={up:'down',down:'up',left:'right',right:'left'};
+function viewDirection(direction){return boardRotation%360===180?OPPOSITE[direction]:direction}
+function syncBoardPerspective(){
+  const board=$('board');
+  if(window.mazeOnline?.active()){
+    boardRotation=0;boardRotating=false;board.style.transform='rotate(0deg)';board.style.setProperty('--content-angle','0deg');board.classList.remove('turn-rotating');board.setAttribute('aria-busy','false');return rotationTask;
+  }
+  if(boardRotating||!['intro','roll','move','event','wall-select','force-select'].includes(state.phase))return rotationTask;
+  const facing=botBrain?180:activePlayer()===0?180:0;
+  if(boardRotation%360===facing)return rotationTask;
+  const run=gameRun,from=boardRotation,to=from+180;boardRotation=to;
+  board.style.transform='rotate('+to+'deg)';board.style.setProperty('--content-angle',(-to)+'deg');
+  if(reducedMotion()||typeof board.animate!=='function')return rotationTask;
+  boardRotating=true;board.classList.add('turn-rotating');board.setAttribute('aria-busy','true');
+  const duration=800,easing='cubic-bezier(.4,0,.2,1)';
+  rotationTask=Promise.all([
+    playMotion(board,[{transform:'rotate('+from+'deg) scale(1)'},{transform:'rotate('+(from+45)+'deg) scale(.70)',offset:.25},{transform:'rotate('+(from+90)+'deg) scale(.70)',offset:.5},{transform:'rotate('+(from+135)+'deg) scale(.70)',offset:.75},{transform:'rotate('+to+'deg) scale(1)'}],{duration,easing}),
+    ...Array.from(board.querySelectorAll('.cell-content'),node=>playMotion(node,[{transform:'rotate('+(-from)+'deg)'},{transform:'rotate('+(-to)+'deg)'}],{duration,easing}))
+  ]).then(()=>{
+    if(run!==gameRun)return;
+    boardRotating=false;board.classList.remove('turn-rotating');board.setAttribute('aria-busy','false');updateControls();
+  });
+  return rotationTask;
 }
+
 function boardCell(index){return $('board').querySelector('[data-index="'+index+'"]')}
 async function animatePawn(playerIndex,destination,bounceDirection){
   const run=gameRun,source=boardCell(state.players[playerIndex].pos)?.querySelector('.pawn'),target=boardCell(destination);
@@ -217,7 +298,7 @@ async function animatePawn(playerIndex,destination,bounceDirection){
   ghost.setAttribute('aria-hidden','true');document.body.append(ghost);motionNodes.add(ghost);source.style.visibility='hidden';
   try{
     if(bounceDirection){
-      const rect=boardCell(state.players[playerIndex].pos).getBoundingClientRect(),d=DIRS[boardDirection(bounceDirection)],bx=d.dc*rect.width*.40,by=d.dr*rect.height*.40;
+      const rect=boardCell(state.players[playerIndex].pos).getBoundingClientRect(),d=DIRS[bounceDirection],sign=boardRotation%360===180?-1:1,bx=d.dc*rect.width*.40*sign,by=d.dr*rect.height*.40*sign;
       const squish=d.dc?'scale(.84,1.10)':'scale(1.10,.84)';
       const completed=await playMotion(ghost,[{transform:'translate(0,0) scale(1)',offset:0},{transform:'translate('+bx+'px,'+by+'px) '+squish,offset:.40},{transform:'translate('+(-bx*.15)+'px,'+(-by*.15)+'px) scale(1.08)',offset:.70},{transform:'translate(0,0) scale(1)',offset:1}],{duration:440,easing:'ease-out'});
       if(!completed||run!==gameRun)return false;
@@ -229,6 +310,7 @@ async function animatePawn(playerIndex,destination,bounceDirection){
 async function revealGoal(run=gameRun){
   state.phase='intro';$('board').classList.add('goal-arriving');updateControls();setMessage('큰 별이 내려오는 칸이 이번 라운드의 목적지입니다.');
   try{
+    await rotationTask;if(run!==gameRun)return;
     await new Promise(resolve=>requestAnimationFrame(resolve));if(run!==gameRun)return;
     const target=boardCell(state.goal)?.querySelector('.goal-mark');if(!target)return;
     if(!reducedMotion()){
@@ -246,6 +328,7 @@ function key(a,b){return a<b?a+'-'+b:b+'-'+a}
 function adjacent(index,name){const row=Math.floor(index/SIZE),col=index%SIZE,d=DIRS[name],nr=row+d.dr,nc=col+d.dc;if(nr<0||nr>=SIZE||nc<0||nc>=SIZE)return null;return nr*SIZE+nc}
 function neighbors(index){const out=[];for(const name of Object.keys(DIRS)){const next=adjacent(index,name);if(next!==null)out.push({name,index:next})}return out}
 function generateMaze(){
+  botBrain?.resetMaze();
   const passages=new Set(),seen=new Set([0]),stack=[0];
   while(stack.length){const at=stack[stack.length-1],choices=shuffle(neighbors(at).filter(n=>!seen.has(n.index)));if(!choices.length){stack.pop();continue}const next=choices[0].index;passages.add(key(at,next));seen.add(next);stack.push(next)}
   for(let cell=0;cell<CELLS;cell++)for(const n of neighbors(cell))if(cell<n.index&&!passages.has(key(cell,n.index))&&Math.random()<.18)passages.add(key(cell,n.index));
@@ -253,9 +336,9 @@ function generateMaze(){
   state.passages=passages;
 }
 function mazeConnected(){const seen=new Set([0]),queue=[0];while(queue.length){const at=queue.shift();for(const n of neighbors(at))if(state.passages.has(key(at,n.index))&&!seen.has(n.index)){seen.add(n.index);queue.push(n.index)}}return seen.size===CELLS}
-function restoreTemporaryWalls(){for(const edge of state.tempInstalled)state.passages.add(edge);for(const edge of state.tempRemoved)state.passages.delete(edge);state.tempInstalled.clear();state.tempRemoved.clear();state.wallMode=null;state.wallFirst=null}
+function restoreTemporaryWalls(){botBrain?.nextRound();for(const edge of state.tempInstalled)state.passages.add(edge);for(const edge of state.tempRemoved)state.passages.delete(edge);state.tempInstalled.clear();state.tempRemoved.clear();state.wallMode=null;state.wallFirst=null}
 function placeRoundItems(){const open=shuffle(Array.from({length:CELLS},(_,i)=>i).filter(i=>!STARTS.includes(i)));state.goal=open[0];state.events=open.slice(1,4)}
-function pawn(player){const node=document.createElement('span');node.className='pawn p'+(player+1);node.textContent='P'+(player+1);node.setAttribute('aria-label','플레이어 '+(player+1));return node}
+function pawn(player){const node=document.createElement('span');node.className='pawn p'+(player+1);node.textContent=botBrain?(player===0?'나':'BOT'):'P'+(player+1);node.setAttribute('aria-label',playerName(player));return node}
 function activePlayer(){return state.forcedPlayer===null?state.current:state.forcedPlayer}
 function renderBoard(){
   const board=$('board');board.replaceChildren();
@@ -267,13 +350,14 @@ function renderBoard(){
     const eventIndex=state.events.indexOf(i);if(eventIndex>=0){cell.classList.add('event-cell');const mark=document.createElement('span');mark.className='event-mark';mark.setAttribute('aria-hidden','true');cell.append(mark);cell.setAttribute('aria-label',cell.getAttribute('aria-label')+', 이벤트 '+(eventIndex+1))}
     for(let p=0;p<2;p++)if(i===STARTS[p]){const mark=document.createElement('span');mark.className='start-mark';mark.style.setProperty('--start',p===0?'var(--p1)':'var(--p2)');const label=document.createElement('span');label.className='start-label';label.textContent='P'+(p+1)+' START';cell.append(mark,label)}
     for(let p=0;p<2;p++)if(state.players[p].pos===i){cell.append(pawn(p));if(p===activePlayer())cell.classList.add('current')}
-    const content=document.createElement('div');content.className='cell-content';content.append(...cell.childNodes);cell.append(content);board.append(cell);
+    const content=document.createElement('div');content.className='cell-content';content.append(...cell.childNodes);cell.append(content);
+    board.append(cell);
   }
 }
 function renderScores(){
   for(let p=0;p<2;p++){
-    $('score-'+p).textContent=String(state.players[p].score);const pips=$('score-pips-'+p);pips.replaceChildren();for(let i=0;i<TARGET_SCORE;i++){const dot=document.createElement('i');if(i<state.players[p].score)dot.className='on';pips.append(dot)}
-    $('player-card-'+p).classList.toggle('active',p===activePlayer()&&state.phase!=='over');const effects=$('effects-'+p);effects.replaceChildren();const changes=state.tempInstalled.size+state.tempRemoved.size;effects.textContent=changes?'이번 라운드 임시 벽 변경 '+changes+'개':'이번 라운드 임시 벽 변경 없음';
+    $('player-name-'+p).textContent=playerName(p);$('score-'+p).textContent=String(state.players[p].score);const pips=$('score-pips-'+p);pips.replaceChildren();for(let i=0;i<TARGET_SCORE;i++){const dot=document.createElement('i');if(i<state.players[p].score)dot.className='on';pips.append(dot)}
+    $('player-card-'+p).classList.toggle('active',p===activePlayer()&&state.phase!=='over');const effects=$('effects-'+p);effects.replaceChildren();const changes=window.mazeOnline?.active()?state.wallChanges||0:state.tempInstalled.size+state.tempRemoved.size;effects.textContent=changes?'이번 라운드 임시 벽 변경 '+changes+'개':'이번 라운드 임시 벽 변경 없음';
   }
   $('round-number').textContent=String(state.round);
 }
@@ -282,20 +366,20 @@ function setDie(value){const die=$('die');die.replaceChildren();for(let i=0;i<9;
 function blockedByRule(direction){const next=adjacent(state.players[state.current].pos,direction);if(next===null)return false;if(state.turnVisited.has(next))return true;const other=1-state.current;return next===state.players[other].pos||next===STARTS[other]}
 function updateEventUses(){const box=$('event-uses');box.replaceChildren();state.events.forEach((cell,i)=>{for(let p=0;p<2;p++){const chip=document.createElement('span');chip.className='event-use'+(state.players[p].used.has(cell)?' used':'');chip.textContent='E'+(i+1)+' · P'+(p+1)+(state.players[p].used.has(cell)?' ✓':'');box.append(chip)}})}
 function updateControls(){
-  const player=activePlayer(),color=player===0?'var(--p1)':'var(--p2)';$('control-panel').style.setProperty('--active-color',color);$('turn-player').textContent='플레이어 '+(player+1)+(state.forcedPlayer!==null?' · 강제 이동':'');$('moves-left').textContent=state.phase==='force-select'?'1':['move','animating','event','roulette'].includes(state.phase)?String(state.movesLeft):'—';$('roll-button').disabled=state.phase!=='roll';
-  for(const button of document.querySelectorAll('[data-direction]')){const direction=boardDirection(button.dataset.direction);button.disabled=state.phase==='force-select'?!forcedMoveChoices().some(choice=>choice.direction===direction):state.phase!=='move'||state.movesLeft<=0||blockedByRule(direction)}
-  $('turn-sub').textContent=state.phase==='turn-rotation'?'차례에 맞춰 게임판을 돌리는 중입니다.':state.phase==='force-select'?'강제 이동할 플레이어가 방향 버튼이나 표시된 칸을 선택하세요.':state.phase==='roll'?'주사위를 굴려 탐사를 시작하세요.':state.phase==='move'?'방향을 골라 한 칸씩 이동하세요.':state.phase==='event'?'이벤트 룰렛 결과를 기다리는 중입니다.':state.phase==='wall-select'?'보드에서 인접한 두 칸을 차례로 선택하세요.':state.phase==='intro'?'목적지 별이 도착하는 중입니다.':state.phase==='collision'?'벽에 부딪혀 출발칸으로 돌아가는 중입니다.':state.phase==='animating'?'말이 다음 칸으로 이동하는 중입니다.':state.phase==='roulette'?'룰렛이 멈출 때까지 기다려 주세요.':'처리 중입니다.';renderScores();updateEventUses();
+  syncBoardPerspective();
+  const player=activePlayer(),color=player===0?'var(--p1)':'var(--p2)';$('control-panel').style.setProperty('--active-color',color);$('turn-player').textContent=playerName(player)+(state.forcedPlayer!==null?' · 강제 이동':'');$('moves-left').textContent=state.phase==='force-select'?'1':['move','animating','event','roulette'].includes(state.phase)?String(state.movesLeft):'—';$('roll-button').disabled=state.phase!=='roll'||boardRotating||isBotTurn();
+  $('spin-button').disabled=state.phase!=='event'||boardRotating||isBotTurn();
+  if(state.phase==='event')$('spin-button').textContent=isBotTurn()?'봇이 룰렛을 돌리는 중':'룰렛 돌리기';
+  $('home-button').hidden=Boolean(window.mazeOnline?.active());$('bot-match-status').hidden=!botBrain;$('bot-match-status').textContent=botBrain?'봇과 대결 · '+BOT_LABELS[botDifficulty]:'';
+  for(const button of document.querySelectorAll('[data-direction]')){const direction=viewDirection(button.dataset.direction);button.disabled=boardRotating||isBotTurn()||(state.phase==='force-select'?!forcedMoveChoices().some(choice=>choice.direction===direction):state.phase!=='move'||state.movesLeft<=0||blockedByRule(direction))}
+  $('turn-sub').textContent=state.phase==='force-select'?'강제 이동할 플레이어가 방향 버튼이나 표시된 칸을 선택하세요.':state.phase==='roll'?'주사위를 굴려 탐사를 시작하세요.':state.phase==='move'?'방향을 골라 한 칸씩 이동하세요.':state.phase==='event'?'이벤트 룰렛 결과를 기다리는 중입니다.':state.phase==='wall-select'?'보드에서 인접한 두 칸을 차례로 선택하세요.':state.phase==='intro'?'목적지 별이 도착하는 중입니다.':state.phase==='collision'?'벽에 부딪혀 출발칸으로 돌아가는 중입니다.':state.phase==='animating'?'말이 다음 칸으로 이동하는 중입니다.':state.phase==='roulette'?'룰렛이 멈출 때까지 기다려 주세요.':'처리 중입니다.';if(boardRotating)$('turn-sub').textContent='플레이어 '+(player+1)+'을 향해 판을 돌리는 중입니다.';if(isBotTurn()&&!boardRotating)$('turn-sub').textContent=playerName(1)+(state.phase==='wall-select'?'이 벽을 고르는 중입니다.':state.phase==='force-select'?'이 강제 이동 방향을 고르는 중입니다.':'이 생각하고 있습니다.');if(!window.mazeOnline?.active())$('board').setAttribute('aria-disabled',String(boardRotating||isBotTurn()));renderScores();updateEventUses();onlineControls();queueBotAction();
 }
 function setMessage(text){$('message').textContent=text}
 function renderAll(){renderBoard();updateControls();setDie(state.die)}
-async function endTurn(){
-  if(state.phase==='over')return;
-  state.current=1-state.current;state.phase='turn-rotation';state.movesLeft=0;state.turnVisited=new Set();
-  setMessage('플레이어 '+(state.current+1)+'의 차례에 맞춰 판을 돌리고 있습니다.');renderAll();
-  if(!await rotateBoardForTurn())return;
-  state.phase='roll';setMessage('플레이어 '+(state.current+1)+'의 차례입니다. 주사위를 굴리세요.');updateControls();
-}
+function endTurn(){if(state.phase==='over')return;state.current=1-state.current;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();if(state.current===1)botBrain?.startTurn();setMessage(playerName(state.current)+'의 차례입니다. 주사위를 굴리세요.');renderAll()}
 function rollDice(){
+  if(boardRotating||(isBotTurn()&&!botDriving))return;
+  if(window.mazeOnline?.active()){if(window.mazeOnline.canAct(activePlayer()))window.mazeOnline.command('roll');return}
   if(state.phase!=='roll')return;state.phase='rolling';updateControls();$('die').classList.add('rolling');$('roll-button').textContent='탐색 중…';
   later(()=>{const player=state.players[state.current],raw=1+randomInt(6);state.die=raw;state.movesLeft=raw;state.turnVisited=new Set([player.pos]);state.phase='move';$('die').classList.remove('rolling');$('roll-button').textContent='주사위 굴리기';setMessage('주사위 '+raw+'! 이동할 방향을 선택하세요.');renderAll()},480)
 }
@@ -305,22 +389,25 @@ async function collide(direction){
   state.players[playerIndex].pos=STARTS[playerIndex];state.players[playerIndex].lastPos=null;state.phase='pause';renderAll();later(endTurn,220);
 }
 
-function scoreGoal(scorer=state.current){state.phase='pause';state.movesLeft=0;state.players[scorer].score++;setMessage('플레이어 '+(scorer+1)+'이 목적지에 도착해 1점을 얻었습니다!');renderAll();if(state.players[scorer].score>=TARGET_SCORE){state.phase='over';renderAll();later(()=>{$('win-title').textContent='플레이어 '+(scorer+1)+' 승리!';$('win-copy').textContent=state.round+'라운드의 기억과 추리 끝에 먼저 6점을 획득했습니다.';$('win-dialog').showModal()},500);return}later(()=>startNextRound(scorer),950)}
-async function startNextRound(scorer){restoreTemporaryWalls();state.round++;state.current=1-scorer;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();state.players.forEach((p,i)=>{p.pos=STARTS[i];p.lastPos=null;p.used=new Set()});placeRoundItems();setMessage('새 라운드의 목적지를 배치했습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});if(await rotateBoardForTurn())revealGoal(gameRun)}
+function scoreGoal(scorer=state.current){state.phase='pause';state.movesLeft=0;state.players[scorer].score++;setMessage(playerName(scorer)+'이 목적지에 도착해 1점을 얻었습니다!');renderAll();if(state.players[scorer].score>=TARGET_SCORE){state.phase='over';renderAll();later(()=>{$('win-title').textContent=playerName(scorer)+' 승리!';$('win-copy').textContent=state.round+'라운드의 기억과 추리 끝에 먼저 6점을 획득했습니다.';$('win-dialog').showModal()},500);return}later(()=>startNextRound(scorer),950)}
+function startNextRound(scorer){restoreTemporaryWalls();state.round++;state.current=1-scorer;if(state.current===1)botBrain?.startTurn();state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();state.players.forEach((p,i)=>{p.pos=STARTS[i];p.lastPos=null;p.used=new Set()});placeRoundItems();setMessage('새 라운드의 목적지를 배치했습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)}
 async function move(direction){
+  if(boardRotating)return;
+  if(window.mazeOnline?.active()){if(window.mazeOnline.canAct(activePlayer()))window.mazeOnline.command('move',direction);return}
   if(state.phase==='force-select'){await chooseForcedMove(direction);return}
   if(state.phase!=='move'||blockedByRule(direction))return;
   const run=gameRun,playerIndex=state.current,player=state.players[playerIndex],from=player.pos,next=adjacent(from,direction);
-  if(next===null||!state.passages.has(key(from,next))){await collide(direction);return}
+  if(next===null||!state.passages.has(key(from,next))){if(next!==null)botBrain?.observeEdge(from,next,false);await collide(direction);return}
   state.phase='animating';updateControls();
   if(!await animatePawn(playerIndex,next)||run!==gameRun)return;
-  player.lastPos=from;player.pos=next;state.turnVisited.add(next);state.movesLeft--;state.phase='move';
-  setMessage(DIRS[direction].label+'쪽으로 이동했습니다. 남은 이동 '+state.movesLeft+'칸.');renderBoard();updateControls();
+  botBrain?.observeEdge(from,next,true);player.lastPos=from;player.pos=next;state.turnVisited.add(next);state.movesLeft--;state.phase='move';
+  setMessage(DIRS[viewDirection(direction)].label+'쪽으로 이동했습니다. 남은 이동 '+state.movesLeft+'칸.');renderBoard();updateControls();
   if(next===state.goal){scoreGoal();return}
   if(state.events.includes(next)&&!player.used.has(next)){
     player.used.add(next);state.movesLeft=0;state.phase='event';updateControls();setMessage('이벤트 칸을 사용해 남은 이동이 사라졌습니다. 룰렛 효과 처리 후 상대의 차례로 넘어갑니다.');
-    $('event-result').textContent='네 영역의 효과와 확률을 확인하고 룰렛을 돌려보세요.';$('spin-button').hidden=false;$('spin-button').disabled=false;renderRoulette();$('event-dialog').showModal();return;
+    $('event-result').textContent='네 영역의 효과와 확률을 확인하고 룰렛을 돌려보세요.';$('spin-button').hidden=false;$('spin-button').disabled=isBotTurn();renderRoulette();$('event-dialog').showModal();return;
   }
+  if(state.movesLeft>0&&Object.keys(DIRS).every(blockedByRule)){state.phase='pause';updateControls();setMessage('다시 밟을 수 없는 칸에 둘러싸여 차례를 마칩니다.');later(endTurn,350);return}
   if(state.movesLeft<=0){state.phase='pause';updateControls();setMessage('이동을 모두 마쳤습니다. 상대의 차례로 넘어갑니다.');later(endTurn,350)}
 }
 
@@ -332,23 +419,26 @@ const EVENT_TABLE=[
 ];
 function pickEvent(){const total=EVENT_TABLE.reduce((sum,e)=>sum+e.weight,0);let roll=Math.random()*total;for(const event of EVENT_TABLE){roll-=event.weight;if(roll<0)return event}return EVENT_TABLE[0]}
 function resumeAfterEvent(message='이벤트 처리가 끝났습니다. 상대의 차례로 넘어갑니다.'){if(state.phase==='over')return;state.movesLeft=0;state.phase='pause';setMessage(message);renderAll();later(endTurn,450)}
-function beginWallSelection(type){state.wallMode=type;state.wallFirst=null;state.phase='wall-select';setMessage(type==='install'?'벽을 설치할 위치의 첫 번째 칸을 선택하세요.':'지울 벽 양쪽의 첫 번째 칸을 선택하세요.');renderAll()}
+function beginWallSelection(type){botBrain?.beginWallEvent();botWallPair=null;state.wallMode=type;state.wallFirst=null;state.phase='wall-select';setMessage(type==='install'?'벽을 설치할 위치의 첫 번째 칸을 선택하세요.':'지울 벽 양쪽의 첫 번째 칸을 선택하세요.');renderAll()}
 function chooseWallCell(cell){
+  if(boardRotating)return;
+  if(window.mazeOnline?.active()){if(window.mazeOnline.canAct(activePlayer()))window.mazeOnline.command('wall',cell);return}
   if(state.phase!=='wall-select')return;
   if(state.wallFirst===null){state.wallFirst=cell;setMessage('선택한 칸과 맞닿은 두 번째 칸을 선택하세요.');renderBoard();return}
   const first=state.wallFirst;if(first===cell||!neighbors(first).some(n=>n.index===cell)){state.wallFirst=cell;setMessage('서로 맞닿은 두 칸이어야 합니다. 새 첫 번째 칸을 선택했어요.');renderBoard();return}
   const edge=key(first,cell);
   if(state.wallMode==='install'){
-    if(!state.passages.has(edge)){state.wallFirst=null;setMessage('선택한 두 칸 사이에는 이미 벽이 있습니다. 다른 위치를 선택하세요.');renderBoard();return}
-    state.passages.delete(edge);if(!mazeConnected()){state.passages.add(edge);state.wallFirst=null;setMessage('모든 칸의 연결을 유지해야 하므로 이곳에는 설치할 수 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
-    if(!state.tempRemoved.delete(edge))state.tempInstalled.add(edge);setMessage('선택한 위치에 벽을 설치했습니다. 이 벽은 다음 라운드에 사라집니다.');
+    if(!state.passages.has(edge)){botBrain?.observeEdge(first,cell,false);state.wallFirst=null;setMessage('선택한 두 칸 사이에는 이미 벽이 있습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    state.passages.delete(edge);if(!mazeConnected()){state.passages.add(edge);botBrain?.observeEdge(first,cell,true);state.wallFirst=null;setMessage('모든 칸의 연결을 유지해야 하므로 이곳에는 설치할 수 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    botBrain?.observeTemporary(first,cell,false);if(!state.tempRemoved.delete(edge))state.tempInstalled.add(edge);setMessage('선택한 위치에 벽을 설치했습니다. 이 벽은 다음 라운드에 사라집니다.');
   }else{
-    if(state.passages.has(edge)){state.wallFirst=null;setMessage('선택한 두 칸 사이에는 지울 벽이 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
-    state.passages.add(edge);if(!state.tempInstalled.delete(edge))state.tempRemoved.add(edge);setMessage('선택한 위치의 벽을 지웠습니다. 이 벽은 다음 라운드에 다시 생깁니다.');
+    if(state.passages.has(edge)){botBrain?.observeEdge(first,cell,true);state.wallFirst=null;setMessage('선택한 두 칸 사이에는 지울 벽이 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    state.passages.add(edge);botBrain?.observeTemporary(first,cell,true);if(!state.tempInstalled.delete(edge))state.tempRemoved.add(edge);setMessage('선택한 위치의 벽을 지웠습니다. 이 벽은 다음 라운드에 다시 생깁니다.');
   }
   state.wallMode=null;state.wallFirst=null;state.phase='pause';renderAll();later(resumeAfterEvent,650)
 }
 function forcedMoveChoices(){
+  if(window.mazeOnline?.active())return state.forcedChoices||[];
   if(state.forcedPlayer===null)return[];
   const player=state.players[state.forcedPlayer],other=1-state.forcedPlayer;
   return Object.keys(DIRS).map(direction=>({direction,index:adjacent(player.pos,direction)})).filter(choice=>choice.index!==null&&state.passages.has(key(player.pos,choice.index))&&choice.index!==player.lastPos&&choice.index!==state.players[other].pos&&choice.index!==STARTS[other]);
@@ -365,7 +455,7 @@ async function chooseForcedMove(direction){
   const run=gameRun,playerIndex=state.forcedPlayer,player=state.players[playerIndex],from=player.pos,next=choice.index;
   state.phase='animating';renderAll();
   if(!await animatePawn(playerIndex,next)||run!==gameRun)return;
-  player.lastPos=from;player.pos=next;state.forcedPlayer=null;renderBoard();
+  botBrain?.observeEdge(from,next,true);player.lastPos=from;player.pos=next;state.forcedPlayer=null;renderBoard();
   if(next===state.goal){scoreGoal(playerIndex);return}
   resumeAfterEvent('플레이어 '+(playerIndex+1)+'이 선택한 방향으로 한 칸 이동했습니다. 이제 주사위를 굴리는 차례입니다.');
 }
@@ -396,6 +486,8 @@ function renderRoulette(){
   rotor.append(svg);rotor.style.transform='rotate('+wheelRotation+'deg)';alignWheelLabels();rotor.setAttribute('aria-label',rouletteGeometry().map(slice=>slice.event.text+' '+slice.percentage+'%').join(' / '));
 }
 async function spinEvent(){
+  if(boardRotating)return;
+  if(window.mazeOnline?.active()){if(window.mazeOnline.canAct(activePlayer()))window.mazeOnline.command('spin');return}
   if(state.phase!=='event')return;
   const run=gameRun,event=pickEvent(),slice=rouletteGeometry().find(item=>item.event===event),center=(slice.from+slice.to)/2;
   state.phase='roulette';updateControls();$('spin-button').disabled=true;$('event-result').textContent='룰렛이 돌아가고 있어요…';
@@ -409,32 +501,109 @@ async function spinEvent(){
 }
 
 
-async function newGame(){
-  cancelMotion();wheelRotation=0;
-  state.round=1;state.current=randomInt(2);state.phase='roll';state.movesLeft=0;state.die=1;state.turnVisited=new Set();state.tempInstalled=new Set();state.tempRemoved=new Set();state.wallMode=null;state.wallFirst=null;state.forcedPlayer=null;state.players=[{score:0,pos:STARTS[0],lastPos:null,used:new Set()},{score:0,pos:STARTS[1],lastPos:null,used:new Set()}];generateMaze();placeRoundItems();if($('win-dialog').open)$('win-dialog').close();if($('event-dialog').open)$('event-dialog').close();setMessage('새로운 보이지 않는 미로가 생성되었습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});if(await rotateBoardForTurn())revealGoal(gameRun)
+function newGame(){
+  if(window.mazeOnline?.active()){if(window.mazeOnline.player===0)window.mazeOnline.command('restart');return}
+  cancelMotion();$('die').classList.remove('rolling');$('roll-button').textContent='주사위 굴리기';wheelRotation=0;if(botBrain)botBrain=new window.MazeBot(botDifficulty);
+  state.round=1;state.current=randomInt(2);if(state.current===1)botBrain?.startTurn();state.phase='roll';state.movesLeft=0;state.die=1;state.turnVisited=new Set();state.tempInstalled=new Set();state.tempRemoved=new Set();state.wallMode=null;state.wallFirst=null;state.forcedPlayer=null;state.players=[{score:0,pos:STARTS[0],lastPos:null,used:new Set()},{score:0,pos:STARTS[1],lastPos:null,used:new Set()}];generateMaze();placeRoundItems();if($('win-dialog').open)$('win-dialog').close();if($('event-dialog').open)$('event-dialog').close();setMessage('새로운 보이지 않는 미로가 생성되었습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)
 }
-$('roll-button').addEventListener('click',rollDice);$('spin-button').addEventListener('click',spinEvent);
-for(const button of document.querySelectorAll('[data-direction]'))button.addEventListener('click',()=>moveOnScreen(button.dataset.direction));
-$('board').addEventListener('click',event=>{const cell=event.target.closest('.cell');if(!cell)return;const target=Number(cell.dataset.index);if(state.phase==='wall-select'){chooseWallCell(target);return}if(state.phase!=='move'&&state.phase!=='force-select')return;const at=state.players[activePlayer()].pos;for(const name of Object.keys(DIRS))if(adjacent(at,name)===target){move(name);break}});
+$('roll-button').addEventListener('click',()=>{if(!isBotTurn())rollDice()});$('spin-button').addEventListener('click',()=>{if(!isBotTurn())spinEvent()});
+for(const button of document.querySelectorAll('[data-direction]'))button.addEventListener('click',()=>{if(!isBotTurn())move(viewDirection(button.dataset.direction))});
+$('board').addEventListener('click',event=>{if(boardRotating)return;const cell=event.target.closest('.cell');if(!cell)return;const target=Number(cell.dataset.index);if(state.phase==='wall-select'){chooseWallCell(target);return}if(state.phase!=='move'&&state.phase!=='force-select')return;const at=state.players[activePlayer()].pos;for(const name of Object.keys(DIRS))if(adjacent(at,name)===target){move(name);break}});
 $('rules-button').addEventListener('click',()=>$('rules-dialog').showModal());
 for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',() => $(button.dataset.close).close());
+$('home-button').addEventListener('click',goHome);$('rules-dialog').addEventListener('close',queueBotAction);
 $('new-game-button').addEventListener('click',newGame);$('play-again-button').addEventListener('click',newGame);
 $('event-dialog').addEventListener('cancel',event=>event.preventDefault());
 $('rules-dialog').addEventListener('click',event=>{if(event.target===$('rules-dialog'))$('rules-dialog').close()});
-document.addEventListener('keydown',event=>{if((state.phase!=='move'&&state.phase!=='force-select')||$('rules-dialog').open||$('event-dialog').open||$('win-dialog').open)return;const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(map[event.key]){event.preventDefault();moveOnScreen(map[event.key])}});
-function startGame(){
+document.addEventListener('keydown',event=>{if(isBotTurn())return;if((state.phase!=='move'&&state.phase!=='force-select')||$('rules-dialog').open||$('event-dialog').open||$('win-dialog').open)return;const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(map[event.key]){event.preventDefault();move(viewDirection(map[event.key]))}});
+function startGame(difficulty=null){
   if(!$('game-screen').hidden)return;
+  botBrain=difficulty?new window.MazeBot(difficulty):null;if(botBrain)botDifficulty=botBrain.difficulty;
   $('start-screen').hidden=true;
   $('game-screen').hidden=false;
   newGame();
   $('game-screen').focus({preventScroll:true});
 }
-$('start-button').addEventListener('click',startGame);
+
+function onlineControls(){
+  if(!window.mazeOnline?.active())return;
+  const mayAct=window.mazeOnline.canAct(activePlayer());
+  $('roll-button').disabled=state.phase!=='roll'||!mayAct;
+  $('spin-button').disabled=state.phase!=='event'||!mayAct;
+  for(const button of document.querySelectorAll('[data-direction]'))if(!mayAct)button.disabled=true;
+  $('board').setAttribute('aria-disabled',String(!mayAct));
+  if(!mayAct&&['roll','move','force-select','wall-select','event'].includes(state.phase))$('turn-sub').textContent='플레이어 '+(activePlayer()+1)+'의 조작을 기다리고 있습니다.';
+}
+function leaveOnline(){
+  cancelMotion();botBrain=null;state.phase='menu';
+  for(const id of ['event-dialog','win-dialog'])if($(id).open)$(id).close();
+  $('die').classList.remove('rolling');$('board').classList.remove('goal-arriving');$('board').removeAttribute('aria-disabled');
+}
+function onlineSnapshot(snapshot,player){
+  const was=state.phase;
+  if(was==='menu')cancelMotion();
+  Object.assign(state,snapshot,{turnVisited:new Set(snapshot.turnVisited),players:snapshot.players.map(p=>({...p,used:new Set(p.used)}))});
+  renderAll();setMessage(snapshot.message);
+  $('die').classList.toggle('rolling',state.phase==='rolling');
+  $('roll-button').textContent=state.phase==='rolling'?'탐색 중…':'주사위 굴리기';
+  $('board').classList.toggle('goal-arriving',state.phase==='intro');
+  const eventOpen=['event','roulette','event-result'].includes(state.phase);
+  if(eventOpen){
+    if(was!==state.phase||!$('event-dialog').open){
+      renderRoulette();
+      const event=EVENT_TABLE.find(e=>e.type===state.eventType),slice=rouletteGeometry().find(s=>s.event===event);
+      if(slice&&state.phase==='roulette'){
+        const center=(slice.from+slice.to)/2,target=wheelRotation+360*5+((360-(wheelRotation+center)%360)%360),run=gameRun;
+        playMotion($('roulette'),[{transform:'rotate('+wheelRotation+'deg)'},{transform:'rotate('+target+'deg)'}],{duration:3600,easing:'cubic-bezier(.12,.78,.10,1)'}).then(()=>{if(run!==gameRun)return;wheelRotation=target;$('roulette').style.transform='rotate('+target+'deg)';alignWheelLabels()});
+      }
+      if(slice&&state.phase==='event-result'){
+        wheelRotation=(360-(slice.from+slice.to)/2)%360;$('roulette').style.transform='rotate('+wheelRotation+'deg)';alignWheelLabels();
+        for(const node of document.querySelectorAll('[data-effect-type]'))node.classList.toggle('is-selected',node.dataset.effectType===event.type);
+      }
+      $('event-result').textContent=state.phase==='event'?'룰렛을 돌려 효과를 확인하세요.':state.phase==='roulette'?'룰렛이 돌아가고 있어요…':event?.text||'';
+    }
+    $('spin-button').hidden=state.phase!=='event';$('spin-button').textContent=player===activePlayer()?'룰렛 돌리기':'상대가 룰렛을 돌리는 중';
+    if(!$('event-dialog').open)$('event-dialog').showModal();
+  }else if($('event-dialog').open)$('event-dialog').close();
+  if(state.phase==='over'){
+    const winner=state.players.findIndex(p=>p.score>=TARGET_SCORE);$('win-title').textContent='플레이어 '+(winner+1)+' 승리!';$('win-copy').textContent=state.round+'라운드 만에 먼저 6점을 획득했습니다.';if(!$('win-dialog').open)$('win-dialog').showModal();
+  }else if($('win-dialog').open)$('win-dialog').close();
+}
+window.mazeGame={onlineSnapshot,onlineControls:updateControls,leaveOnline,startLocal:startGame,startBot:difficulty=>startGame(difficulty),goHome};
+
 $('start-rules-button').addEventListener('click',()=>$('rules-dialog').showModal());
 renderRoulette();
 state.phase='menu';
 })();
 
 </script>
+<script id="menu-script">
+(()=>{
+  'use strict';
+  const $=id=>document.getElementById(id);
+  function showChoices(){
+    $('mode-choices').hidden=false;$('online-options').hidden=true;$('mode-back-button').hidden=true;
+    $('mode-title').textContent='플레이 방식 선택';$('mode-message').textContent='';
+  }
+  $('start-button').addEventListener('click',()=>{
+    if(window.mazeOnline?.active())return;
+    showChoices();$('mode-dialog').showModal();
+  });
+  $('multiplayer-button').addEventListener('click',()=>{
+    $('mode-choices').hidden=true;$('online-options').hidden=false;$('mode-back-button').hidden=false;
+    $('mode-title').textContent='멀티플레이';$('mode-message').textContent='';$('create-room-button').focus();
+  });
+  $('local-play-button').addEventListener('click',()=>{
+    $('mode-dialog').close();window.mazeGame.startLocal();
+  });
+  $('mode-back-button').addEventListener('click',()=>{showChoices();$('multiplayer-button').focus()});
+  $('bot-battle-button').addEventListener('click',()=>{if(!window.mazeOnline?.active())$('bot-difficulty-dialog').showModal()});
+  for(const difficulty of ['easy','medium','hard'])$('bot-'+difficulty+'-button').addEventListener('click',()=>{$('bot-difficulty-dialog').close();window.mazeGame.startBot(difficulty)});
+  $('bot-difficulty-dialog').addEventListener('click',event=>{if(event.target===$('bot-difficulty-dialog'))$('bot-difficulty-dialog').close()});
+  $('mode-dialog').addEventListener('close',showChoices);
+  $('mode-dialog').addEventListener('click',event=>{if(event.target===$('mode-dialog'))$('mode-dialog').close()});
+})();
+</script>
+<script src="online.js"></script>
 </body>
 </html>
