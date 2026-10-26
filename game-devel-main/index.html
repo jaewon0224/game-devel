@@ -14,10 +14,11 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 [hidden]{display:none!important}
-.start-screen{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:34px 22px;text-align:center;position:relative;overflow:hidden}
+.start-screen{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:34px 22px;text-align:center;position:relative;overflow:hidden;isolation:isolate;background:#f7fbf9}
 .start-content{width:min(650px,100%);position:relative;z-index:1}
-.start-emblem{width:170px;height:170px;margin:0 auto 28px;position:relative;border:1px solid #3b6672;border-radius:28px;box-shadow:0 0 70px #55d6dc14,inset 0 0 24px #55d6dc08;background:#0e212b;background-image:linear-gradient(#55d6dc0a 1px,transparent 1px),linear-gradient(90deg,#55d6dc0a 1px,transparent 1px);background-size:28px 28px;transform:rotate(-7deg)}
-.start-emblem svg{width:100%;height:100%;display:block}
+.start-maze-background{position:absolute;inset:0;z-index:-1;pointer-events:none;user-select:none}
+.start-maze-background svg{position:absolute;left:50%;top:50%;width:max(120vw,140vh);width:max(120vw,140svh);height:auto;aspect-ratio:1;display:block;transform:translate(-50%,-50%) rotate(-7deg);opacity:.32}
+.start-maze-background::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,#f7fbf9f5 0%,#f7fbf9d9 25%,#f7fbf94d 60%,#f7fbf914 100%)}
 .start-eyebrow{font:700 11px Consolas,monospace;letter-spacing:.26em;color:#78d6ca;margin:0 0 14px}
 .start-title{font-size:clamp(38px,7vw,68px);letter-spacing:-.065em;line-height:1.17;margin:0;color:#eff9f7;text-shadow:0 4px 32px #55d6dc18}
 .start-description{margin:22px auto;color:#a1b9c1;font-size:clamp(13px,2vw,16px);line-height:1.9}
@@ -30,7 +31,7 @@
 .start-button:active{transform:translateY(3px);box-shadow:0 2px 0 #226b59}
 .start-rules-button{background:transparent;border:0;color:#b0cbd0;font-size:12px;padding:10px 18px;cursor:pointer;text-decoration:underline;text-underline-offset:5px}
 .start-footnote{color:#66858f;font-size:11px;line-height:1.8;margin:25px 0 0}
-@media(max-width:480px){.start-emblem{width:140px;height:140px;margin-bottom:24px}.start-screen{padding:28px 16px}.start-facts{gap:7px}.start-facts span{font-size:10px;padding:7px 9px}}
+@media(max-width:480px){.start-screen{padding:28px 16px}.start-facts{gap:7px}.start-facts span{font-size:10px;padding:7px 9px}}
 @media(prefers-reduced-motion:reduce){.start-button{transition:none}}
 
 /* 흰색 바탕에 맞춘 밝은 화면 */
@@ -94,7 +95,6 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
 .roulette::after{background:#ffffff;border-color:#e7eff1;color:#284954}
 .event-content p,.win-content p{color:#526e79}
 .event-result{color:#254b57!important}
-.start-emblem{background-color:#f3fbf7;border-color:#c2dfd4;box-shadow:0 0 60px #55ba9920,inset 0 0 24px #55ba9910;background-image:linear-gradient(#13886d0a 1px,transparent 1px),linear-gradient(90deg,#13886d0a 1px,transparent 1px)}
 .start-title{color:#1d3b47;text-shadow:none}
 .start-description{color:#526e79}
 .start-facts span{background:#f3f9f6;color:#46686b;border-color:#d1e2dc}
@@ -132,8 +132,7 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
 </head>
 <body>
 <main id="start-screen" class="start-screen" aria-labelledby="start-title">
-  <div id="start-content" class="start-content">
-    <div class="start-emblem" aria-hidden="true">
+    <div class="start-maze-background" aria-hidden="true">
       <svg viewBox="0 0 168 168" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M28 28H140V140H28V28Z" stroke="#37626f" stroke-width="2"/>
         <path d="M28 56H84V84H56V112H112V140M112 28V56H140M112 84H140M28 112H56M84 28V56" stroke="#6995a2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -143,7 +142,7 @@ button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
         <path d="M126 57L130 65L139 66L132 72L134 81L126 77L118 81L120 72L113 66L122 65L126 57Z" fill="#ffd166"/>
       </svg>
     </div>
-    
+  <div id="start-content" class="start-content">
     <h1 id="start-title" class="start-title">보이지 않는 미로</h1>
     <div class="start-actions">
       <button id="start-button" class="start-button" type="button" aria-haspopup="dialog" aria-controls="mode-dialog">플레이 <span aria-hidden="true">→</span></button>
