@@ -22,3 +22,16 @@ test('online mode retains its fixed view and reduced motion skips the turn anima
 test('leaving during rotation cancels animation without a stale callback changing the menu',async()=>{
   const ui=gameUI({reduced:false}),{g,s,window,ids}=ui;g.renderAll();window.mazeGame.leaveOnline();await flush();assert.equal(s.phase,'menu');assert.equal(g.rotating,false);assert.equal(ids.get('board').getAttribute('aria-busy'),'false');
 });
+
+test('goal reveal waits for screen entrance without waiting on unrelated animations',async()=>{
+  const ui=gameUI({reduced:false}),{g,s,ids}=ui;g.renderAll();ui.finish();await flush();
+  let finishEntrance;
+  ids.get('game-screen').getAnimations=()=>[
+    {animationName:'screen-game-enter',finished:new Promise(resolve=>{finishEntrance=resolve})},
+    {animationName:'pulse',finished:new Promise(()=>{})}
+  ];
+  g.startNextRound(0);ui.finish();await flush();
+  assert.equal(s.phase,'intro');assert.equal(ui.pending.length,0);
+  finishEntrance();await flush();assert.equal(ui.pending.length,1);
+  ui.finish();await flush();assert.equal(s.phase,'roll');
+});

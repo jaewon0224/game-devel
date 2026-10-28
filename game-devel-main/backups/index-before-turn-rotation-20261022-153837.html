@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>보이지 않는 미로</title>
+<style>
+:root{color-scheme:dark;--bg:#081118;--panel:#101e28;--panel2:#132632;--line:#28414e;--text:#edf5f4;--muted:#8ea5ad;--p1:#ff735e;--p2:#55d6dc;--gold:#ffd166;--green:#70d69c;--cell:#142833;--cell2:#172e3a;--shadow:#02080caa}
+*{box-sizing:border-box}button{font:inherit}button:focus-visible,[tabindex]:focus-visible{outline:3px solid #fff;outline-offset:3px}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI","Malgun Gothic",sans-serif;background-image:radial-gradient(circle at 18% -10%,#17384a 0,transparent 34%),radial-gradient(circle at 90% 0,#31213b 0,transparent 28%),linear-gradient(#ffffff03 1px,transparent 1px),linear-gradient(90deg,#ffffff03 1px,transparent 1px);background-size:auto,auto,42px 42px,42px 42px}.shell{width:min(1280px,calc(100% - 32px));margin:0 auto;padding:26px 0 34px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:14px}.brand-mark{width:44px;height:44px;border:1px solid #49616c;border-radius:13px;display:grid;place-items:center;background:#122630;box-shadow:inset 0 0 20px #5dd8dc15}.brand-mark::before{content:"";width:20px;height:20px;border:2px solid var(--p2);transform:rotate(45deg);box-shadow:0 0 14px #55d6dc77}.kicker{font:700 10px Consolas,monospace;letter-spacing:.19em;color:#77cdd0}.brand h1{font-size:clamp(20px,3vw,29px);letter-spacing:-.04em;margin:4px 0 0}.top-actions{display:flex;gap:8px}.ghost-button{border:1px solid #314b57;background:#10212b;color:#cfe0e4;border-radius:9px;padding:10px 14px;font-size:12px;cursor:pointer}.ghost-button:hover{background:#18303c;border-color:#52707d}.game-layout{display:grid;grid-template-columns:260px minmax(360px,620px) minmax(260px,1fr);gap:18px;align-items:start}.card{background:linear-gradient(145deg,#12242e,#0e1c25);border:1px solid #253e49;border-radius:18px;box-shadow:0 18px 55px var(--shadow)}.score-panel{padding:18px;position:sticky;top:18px}.section-label{font:700 9px Consolas,monospace;color:#7d9aa5;letter-spacing:.18em;text-transform:uppercase}.round-line{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #263e49;padding:5px 2px 17px}.round-line strong{font:700 31px Consolas,monospace}.round-line small{color:var(--muted);font-size:11px;margin-bottom:4px}.player-card{position:relative;margin-top:13px;padding:15px;border:1px solid #2b424c;border-radius:13px;background:#12242e;overflow:hidden}.player-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--player)}.player-card[data-player="0"]{--player:var(--p1)}.player-card[data-player="1"]{--player:var(--p2)}.player-card.active{border-color:color-mix(in srgb,var(--player) 65%,#2b424c);box-shadow:0 0 0 1px color-mix(in srgb,var(--player) 35%,transparent),0 0 26px color-mix(in srgb,var(--player) 12%,transparent)}.player-head{display:flex;align-items:center;justify-content:space-between}.player-name{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:800}.token-mini{width:17px;height:17px;background:var(--player);border-radius:50%;box-shadow:0 0 12px color-mix(in srgb,var(--player) 75%,transparent)}.turn-badge{font:700 8px Consolas,monospace;letter-spacing:.11em;color:var(--player);opacity:0}.active .turn-badge{opacity:1}.score{display:flex;align-items:baseline;gap:5px;margin:17px 0 10px}.score b{font:800 36px Consolas,monospace;color:var(--player)}.score span{font:11px Consolas,monospace;color:#718a94}.score-pips{display:flex;gap:5px}.score-pips i{width:16px;height:5px;border-radius:99px;background:#2b414b}.score-pips i.on{background:var(--player);box-shadow:0 0 8px color-mix(in srgb,var(--player) 60%,transparent)}.effects{min-height:36px;margin-top:12px;padding-top:10px;border-top:1px solid #263b45;color:#849ba4;font-size:10px;line-height:1.7}.effect-chip{display:inline-block;margin:2px 3px 2px 0;padding:3px 6px;background:#1b3540;border-radius:4px;color:#bcd1d5}.legend{margin-top:20px}.legend-list{display:grid;gap:9px;margin-top:12px}.legend-row{display:flex;align-items:center;gap:9px;color:#98adb4;font-size:11px}.legend-icon{width:16px;height:16px;border:1px solid #44606b;border-radius:4px;display:grid;place-items:center;color:var(--gold);font-size:10px}.memory-note{margin-top:20px;padding:13px;border:1px dashed #39515b;border-radius:10px;color:#93a9b0;font-size:10px;line-height:1.8}.memory-note b{color:#d7e6e7}.board-card{padding:18px}.board-header{display:flex;justify-content:space-between;align-items:center;padding:1px 2px 14px}.board-header h2{margin:4px 0 0;font-size:17px}.scanner{display:flex;align-items:center;gap:7px;color:#6fd6bb;font:9px Consolas,monospace;letter-spacing:.1em}.scanner i{width:7px;height:7px;border-radius:50%;background:#65e1bc;box-shadow:0 0 10px #65e1bc;animation:pulse 1.7s infinite}.board-frame{position:relative;padding:12px;border:1px solid #37525d;border-radius:14px;background:#09151d;box-shadow:inset 0 0 35px #0009}.board-frame::before,.board-frame::after{content:"";position:absolute;width:25px;height:25px;border-color:#6a8994;pointer-events:none}.board-frame::before{left:5px;top:5px;border-left:2px solid;border-top:2px solid}.board-frame::after{right:5px;bottom:5px;border-right:2px solid;border-bottom:2px solid}.board{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr));width:100%;aspect-ratio:1;border:1px solid #263f4a;background:#0c1a22;overflow:hidden}.cell{position:relative;min-width:0;min-height:0;overflow:hidden;border-right:1px solid #223c47;border-bottom:1px solid #223c47;background:linear-gradient(145deg,var(--cell),var(--cell2));display:grid;place-items:center;isolation:isolate}.cell:nth-child(6n){border-right:0}.cell:nth-last-child(-n+6){border-bottom:0}.cell::before{content:"";position:absolute;inset:8%;border:1px solid #ffffff03;border-radius:6px}.cell.turn-visited::after{content:"";position:absolute;width:14%;height:14%;border-radius:50%;background:#93adb433;box-shadow:0 0 0 5px #93adb40d}.cell.wall-selected{outline:3px solid var(--gold);outline-offset:-4px;background:#3a3524}.cell.wall-selected::before{border-color:#ffd16677}.cell.goal{background:radial-gradient(circle,#6c5627 0,#2d302d 34%,var(--cell) 70%)}.goal-mark{position:absolute;width:34%;height:34%;background:var(--gold);clip-path:polygon(50% 0,62% 35%,100% 38%,70% 59%,80% 100%,50% 77%,20% 100%,30% 59%,0 38%,38% 35%);filter:drop-shadow(0 0 8px #ffd166aa);animation:goalFloat 2s ease-in-out infinite}.cell.event-cell{background:radial-gradient(circle,#144545 0,var(--cell) 68%)}.event-mark{position:absolute;width:27%;height:27%;border:2px solid #66e0ca;transform:rotate(45deg);box-shadow:0 0 11px #66e0ca77}.event-mark::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;transform:rotate(-45deg);font:800 11px Consolas,monospace;color:#a6f5df}.start-mark{position:absolute;inset:12%;border:1px dashed color-mix(in srgb,var(--start) 45%,transparent);border-radius:8px}.start-label{position:absolute;right:6px;bottom:4px;color:color-mix(in srgb,var(--start) 62%,#9cb0b6);font:8px Consolas,monospace}.pawn{position:absolute;left:30%;top:30%;z-index:4;width:40%;height:40%;min-width:22px;min-height:22px;border-radius:50%;background:var(--pawn);border:3px solid #f6fbfb;box-shadow:0 4px 0 color-mix(in srgb,var(--pawn) 54%,#061016),0 0 17px color-mix(in srgb,var(--pawn) 70%,transparent);display:grid;place-items:center;color:#071116;font:900 clamp(8px,1.1vw,12px) Consolas,monospace;transition:transform .18s}.pawn.p1{--pawn:var(--p1)}.pawn.p2{--pawn:var(--p2)}.cell.current .pawn{animation:activePawn 1.3s ease-in-out infinite}.board-caption{display:flex;justify-content:space-between;gap:15px;margin:12px 3px 0;color:#718a94;font:9px Consolas,monospace;letter-spacing:.05em}.control-panel{padding:18px}.turn-display{border-bottom:1px solid #2a414b;padding-bottom:16px}.turn-title{display:flex;align-items:center;gap:9px;margin-top:8px}.turn-color{width:10px;height:10px;border-radius:50%;background:var(--active-color);box-shadow:0 0 12px var(--active-color)}.turn-title strong{font-size:18px}.turn-sub{margin:8px 0 0;color:#8fa6ae;font-size:11px;line-height:1.7}.dice-zone{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:center;margin-top:18px}.die{width:74px;height:74px;border-radius:15px;background:#eaf2ef;color:#0e1b22;box-shadow:0 6px 0 #91a49f;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:13px}.die.rolling{animation:diceShake .35s infinite}.dot{width:9px;height:9px;border-radius:50%;background:#19303a;align-self:center;justify-self:center}.roll-button{height:48px;border:0;border-radius:10px;background:linear-gradient(135deg,#6fe1bd,#43b798);color:#081611;font-weight:900;cursor:pointer;box-shadow:0 4px 0 #277962}.roll-button:hover{filter:brightness(1.08)}.roll-button:disabled{filter:grayscale(.6);cursor:default;opacity:.45}.move-counter{margin-top:12px;color:#8fa5ad;font-size:11px}.move-counter b{color:#fff;font:800 19px Consolas,monospace}.dpad-wrap{display:grid;place-items:center;margin-top:20px;padding:17px;border-radius:13px;background:#0b1820;border:1px solid #263e48}.dpad{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:50px 50px 50px;gap:5px}.direction{border:1px solid #39535e;background:#192e38;color:#dce9e9;border-radius:9px;font-size:20px;cursor:pointer}.direction:hover:not(:disabled){background:#24434f;border-color:#61bcae}.direction:disabled{opacity:.22;cursor:default}.direction.up{grid-column:2}.direction.left{grid-row:2;grid-column:1}.direction-center{grid-row:2;grid-column:2;border-radius:50%;background:#0a151b;border:1px solid #2e4650;display:grid;place-items:center;color:#5d7781;font:8px Consolas,monospace}.direction.right{grid-row:2;grid-column:3}.direction.down{grid-row:3;grid-column:2}.message-box{margin-top:17px;min-height:76px;padding:13px 14px;border:1px solid #2a434e;border-radius:10px;background:#0c1a22}.message-title{font:700 9px Consolas,monospace;letter-spacing:.13em;color:#5ed1b5}.message{margin:7px 0 0;font-size:12px;line-height:1.75;color:#cbdadd}.event-status{margin-top:14px}.event-status h3{font-size:11px;margin:0 0 9px;color:#8fa5ad}.event-uses{display:flex;gap:5px;flex-wrap:wrap}.event-use{border:1px solid #2d4a55;border-radius:5px;padding:5px 7px;color:#6d8992;font:9px Consolas,monospace}.event-use.used{border-color:#387565;color:#76c9ad;background:#17352e}.rules-dialog,.event-dialog,.win-dialog{width:min(650px,calc(100% - 28px));max-height:86vh;border:1px solid #36525e;border-radius:18px;padding:0;background:#10212b;color:var(--text);box-shadow:0 26px 90px #000b}.event-dialog{width:min(520px,calc(100% - 28px))}.win-dialog{width:min(480px,calc(100% - 28px));text-align:center}.rules-dialog::backdrop,.event-dialog::backdrop,.win-dialog::backdrop{background:#03090ed9;backdrop-filter:blur(5px)}.dialog-top{display:flex;align-items:center;justify-content:space-between;padding:18px 21px;border-bottom:1px solid #29414c}.dialog-top h2{margin:0;font-size:18px}.close-button{border:1px solid #38545f;border-radius:7px;background:#162d38;color:#cee0e2;padding:7px 10px;cursor:pointer}.rules-content{padding:20px 22px 26px;overflow:auto}.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rule-card{padding:14px;border:1px solid #29444f;border-radius:10px;background:#122630}.rule-card b{display:block;color:#75dbc1;font-size:12px;margin-bottom:7px}.rule-card p,.rule-card li{font-size:11px;color:#a8bcc2;line-height:1.8}.rule-card p{margin:0}.rule-card ul{margin:0;padding-left:17px}.event-content{padding:25px;text-align:center}.roulette{width:190px;height:190px;margin:5px auto 21px;border-radius:50%;border:7px solid #c8d7d6;background:conic-gradient(#ff735e 0 60deg,#ffd166 60deg 120deg,#55d6dc 120deg 180deg,#8667d4 180deg 240deg,#70d69c 240deg 300deg,#dc5f93 300deg);position:relative;box-shadow:0 0 0 5px #253d48,0 13px 35px #0007}.roulette::before{content:"";position:absolute;left:50%;top:-16px;transform:translateX(-50%);border-left:10px solid transparent;border-right:10px solid transparent;border-top:20px solid white;z-index:3}.roulette::after{content:"?";position:absolute;inset:51px;display:grid;place-items:center;border-radius:50%;background:#10222c;border:5px solid #dae7e5;font:900 34px Consolas,monospace}.roulette.spinning{animation:spinWheel .25s linear infinite}.event-content h3{font-size:23px;margin:0}.event-content p{font-size:12px;line-height:1.8;color:#9db1b7}.spin-button,.continue-button{border:0;border-radius:9px;padding:12px 22px;background:var(--gold);color:#211b0e;font-weight:900;cursor:pointer}.event-result{min-height:45px;margin:13px 0;color:#eaf4f2!important}.win-content{padding:34px}.trophy{font-size:58px;filter:drop-shadow(0 0 22px #ffd16677)}.win-content h2{font-size:29px;margin:9px 0}.win-content p{color:#9fb3b9;font-size:13px;line-height:1.8}.continue-button{background:#62d7b5}.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}@keyframes pulse{50%{opacity:.35}}@keyframes goalFloat{50%{transform:translateY(-5px) rotate(7deg)}}@keyframes activePawn{50%{transform:translateY(-4px)}}@keyframes diceShake{25%{transform:rotate(6deg)}75%{transform:rotate(-6deg)}}@keyframes spinWheel{to{transform:rotate(360deg)}}
+@media(max-width:1040px){.game-layout{grid-template-columns:220px minmax(370px,1fr)}.control-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:18px}.control-panel>.section-label{grid-column:1/-1}.message-box,.event-status{margin-top:0}.dpad-wrap{grid-row:2/5;grid-column:2;margin:0}.turn-display,.dice-zone,.move-counter{grid-column:1}.event-status{grid-column:1/-1}}
+@media(max-width:720px){.shell{width:calc(100% - 18px);padding-top:15px}.topbar{align-items:flex-start}.brand-mark{width:38px;height:38px}.top-actions{flex-direction:column}.ghost-button{padding:7px 9px}.game-layout{grid-template-columns:1fr}.score-panel{position:static;display:grid;grid-template-columns:1fr 1fr;gap:10px}.round-line,.score-panel>.section-label,.legend,.memory-note{grid-column:1/-1}.player-card{margin-top:0}.board-card{padding:11px}.board-frame{padding:8px}.board-caption{font-size:8px}.control-panel{display:block}.dpad-wrap{margin-top:18px}.message-box{margin-top:16px}.event-status{margin-top:14px}.rules-grid{grid-template-columns:1fr}.pawn{border-width:2px}.roulette{width:165px;height:165px}.roulette::after{inset:43px}}
+@media(max-width:390px){.score-panel{grid-template-columns:1fr}.player-card,.round-line{grid-column:1}.brand h1{font-size:18px}.kicker{font-size:8px}.board-caption span:last-child{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+[hidden]{display:none!important}
+.start-screen{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:34px 22px;text-align:center;position:relative;overflow:hidden}
+.start-content{width:min(650px,100%);position:relative;z-index:1}
+.start-emblem{width:170px;height:170px;margin:0 auto 28px;position:relative;border:1px solid #3b6672;border-radius:28px;box-shadow:0 0 70px #55d6dc14,inset 0 0 24px #55d6dc08;background:#0e212b;background-image:linear-gradient(#55d6dc0a 1px,transparent 1px),linear-gradient(90deg,#55d6dc0a 1px,transparent 1px);background-size:28px 28px;transform:rotate(-7deg)}
+.start-emblem svg{width:100%;height:100%;display:block}
+.start-eyebrow{font:700 11px Consolas,monospace;letter-spacing:.26em;color:#78d6ca;margin:0 0 14px}
+.start-title{font-size:clamp(38px,7vw,68px);letter-spacing:-.065em;line-height:1.17;margin:0;color:#eff9f7;text-shadow:0 4px 32px #55d6dc18}
+.start-description{margin:22px auto;color:#a1b9c1;font-size:clamp(13px,2vw,16px);line-height:1.9}
+.start-facts{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:25px 0 32px}
+.start-facts span{padding:8px 12px;border:1px solid #294751;background:#12273099;border-radius:7px;font-size:11px;color:#b9d2d7}
+.start-facts b{color:#80e0c4;margin-right:5px}
+.start-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
+.start-button{display:flex;align-items:center;justify-content:center;gap:22px;width:min(320px,100%);min-height:62px;border:1px solid #a0f3d8;border-radius:12px;color:#07251d;background:linear-gradient(135deg,#92edcf,#4dc3a1);font-size:18px;font-weight:900;box-shadow:0 5px 0 #226b59,0 12px 40px #4dc3a121;cursor:pointer;transition:background .15s,transform .15s}
+.start-button:hover{background:linear-gradient(135deg,#b2ffe3,#70d9b9);transform:translateY(-1px)}
+.start-button:active{transform:translateY(3px);box-shadow:0 2px 0 #226b59}
+.start-rules-button{background:transparent;border:0;color:#b0cbd0;font-size:12px;padding:10px 18px;cursor:pointer;text-decoration:underline;text-underline-offset:5px}
+.start-footnote{color:#66858f;font-size:11px;line-height:1.8;margin:25px 0 0}
+@media(max-width:480px){.start-emblem{width:140px;height:140px;margin-bottom:24px}.start-screen{padding:28px 16px}.start-facts{gap:7px}.start-facts span{font-size:10px;padding:7px 9px}}
+@media(prefers-reduced-motion:reduce){.start-button{transition:none}}
+
+/* 흰색 바탕에 맞춘 밝은 화면 */
+:root{color-scheme:light;--bg:#ffffff;--panel:#ffffff;--panel2:#f3f7f7;--line:#d5e1e3;--text:#203b46;--muted:#566e78;--p1:#d4523c;--p2:#00868d;--gold:#d99b17;--green:#14886c;--cell:#f8fbfb;--cell2:#eef4f4;--shadow:#234e6410}
+body{background:#ffffff;background-image:none}
+button:focus-visible,[tabindex]:focus-visible{outline-color:#176fc1}
+.brand-mark{background:#f1f9f7;border-color:#c3d8d5;box-shadow:inset 0 0 20px #138e7810}
+.kicker,.start-eyebrow{color:#137968}
+.ghost-button,.close-button{background:#ffffff;color:#324f59;border-color:#cbdcdf}
+.ghost-button:hover,.close-button:hover{background:#eef7f4;border-color:#96beb3}
+.card{background:#ffffff;border-color:#d5e1e3;box-shadow:0 12px 35px var(--shadow)}
+.section-label{color:#627a84}
+.round-line,.turn-display{border-bottom-color:#dce6e8}
+.player-card{background:#f8fbfb;border-color:#d8e3e5}
+.player-card.active{border-color:color-mix(in srgb,var(--player) 60%,#d8e3e5);box-shadow:0 0 0 1px color-mix(in srgb,var(--player) 20%,transparent),0 7px 22px color-mix(in srgb,var(--player) 9%,transparent)}
+.score span,.board-caption{color:#5e7680}
+.score-pips i{background:#dae4e6}
+.effects{color:#607680;border-top-color:#dce6e8}
+.effect-chip{background:#eaf4ef;color:#356551}
+.legend-row,.memory-note{color:#526d78}
+.legend-icon{border-color:#c4d7dc;background:#fcfdfd}
+.memory-note{background:#f6faf9;border-color:#c8dcd7}
+.memory-note b{color:#274f59}
+.scanner{color:#167b62}
+.scanner i{background:#239779;box-shadow:0 0 9px #23977933}
+.board-frame{background:#f1f6f6;border-color:#cbdce0;box-shadow:inset 0 0 25px #426d7710}
+.board-frame::before,.board-frame::after{color:#849fa8}
+.board{background:#ffffff;border-color:#c7d8de}
+.cell{border-right-color:#cddde2;border-bottom-color:#cddde2}
+.cell::before{border-color:#76929c0b}
+.cell.turn-visited::after{background:#607f8c33;box-shadow:0 0 0 5px #607f8c0d}
+.cell.goal{background:radial-gradient(circle,#ffedb7 0,#fff8e6 35%,var(--cell) 75%)}
+.cell.event-cell{background:radial-gradient(circle,#d5f4e8 0,var(--cell) 70%)}
+.cell.wall-selected{background:#fff3c9;outline-color:#c59115}
+.cell.wall-selected::before{border-color:#c5911580}
+.event-mark{border-color:#16876d;box-shadow:0 0 9px #16876d22}
+.event-mark::after{color:#12694f}
+.start-label{color:color-mix(in srgb,var(--start) 85%,#354d56)}
+.pawn{color:#ffffff;border-color:#ffffff;box-shadow:0 3px 0 color-mix(in srgb,var(--pawn) 65%,#203b46),0 3px 12px color-mix(in srgb,var(--pawn) 25%,transparent)}
+.turn-sub,.move-counter,.event-status h3{color:#586f79}
+.move-counter b{color:#203b46}
+.die{background:#ffffff;outline:1px solid #d7e2e5;box-shadow:0 6px 0 #c5d6db}
+.dot{background:#284954}
+.dpad-wrap{background:#f4f8f8;border-color:#d4e2e5}
+.direction{background:#ffffff;color:#2b505c;border-color:#c5d8de}
+.direction:hover:not(:disabled){background:#e5f3ee;border-color:#75b4a0}
+.direction-center{background:#e9f1f2;border-color:#d0e0e4;color:#5b7782}
+.message-box{background:#f4faf7;border-color:#caddd4}
+.message-title{color:#19785e}
+.message{color:#36595e}
+.event-use{border-color:#cbdce0;color:#617d88;background:#f9fcfc}
+.event-use.used{border-color:#87b6a5;color:#287452;background:#e5f4ec}
+.rules-dialog,.event-dialog,.win-dialog{background:#ffffff;color:var(--text);border-color:#c8dce0;box-shadow:0 24px 80px #18384833}
+.rules-dialog::backdrop,.event-dialog::backdrop,.win-dialog::backdrop{background:#18384866}
+.dialog-top{background:#f7faf9;border-bottom-color:#d8e4e6}
+.rule-card{background:#f7fbf9;border-color:#d5e4dd}
+.rule-card b{color:#1a785e}
+.rule-card p,.rule-card li{color:#4b6873}
+.roulette{border-color:#ffffff;box-shadow:0 0 0 4px #d5e2e5,0 10px 25px #345f7722}
+.roulette::before{border-top-color:#203b46}
+.roulette::after{background:#ffffff;border-color:#e7eff1;color:#284954}
+.event-content p,.win-content p{color:#526e79}
+.event-result{color:#254b57!important}
+.start-emblem{background-color:#f3fbf7;border-color:#c2dfd4;box-shadow:0 0 60px #55ba9920,inset 0 0 24px #55ba9910;background-image:linear-gradient(#13886d0a 1px,transparent 1px),linear-gradient(90deg,#13886d0a 1px,transparent 1px)}
+.start-title{color:#1d3b47;text-shadow:none}
+.start-description{color:#526e79}
+.start-facts span{background:#f3f9f6;color:#46686b;border-color:#d1e2dc}
+.start-facts b{color:#217c60}
+.start-button{border-color:#6eccab;box-shadow:0 5px 0 #388b6e,0 12px 30px #4dc3a11a}
+.start-rules-button{color:#3c6c68}
+.start-footnote{color:#627f8a}
+
+/* 칸 크기를 유지하면서 말과 목적지를 화면 위에서 이동 */
+.cell.current .pawn{animation:none}
+.motion-pawn{position:fixed;z-index:10010;pointer-events:none;animation:none!important;transition:none!important;margin:0}
+.goal-arriving .goal-mark{visibility:hidden;animation:none}
+.goal-flight{position:fixed;z-index:10020;pointer-events:none;width:180px;height:180px;background:linear-gradient(145deg,#ffe28c,#e8ac24);clip-path:polygon(50% 0,62% 35%,100% 38%,70% 59%,80% 100%,50% 77%,20% 100%,30% 59%,0 38%,38% 35%);filter:drop-shadow(0 15px 24px #d99b1740);transform-origin:center}
+.event-dialog{width:min(680px,calc(100% - 24px));max-height:92vh;max-height:92dvh;overflow:auto}
+.event-content{padding:24px}
+.roulette-shell{position:relative;width:min(440px,100%);aspect-ratio:1;margin:20px auto 24px}
+.roulette{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:50%;background:none;box-shadow:0 0 0 6px #ffffff,0 0 0 8px #c9d9df,0 12px 28px #345f771f;transform-origin:center;animation:none!important}
+.roulette::before,.roulette::after{display:none}
+.roulette svg{display:block;width:100%;height:100%;overflow:visible}
+.roulette-sector{stroke:#ffffff;stroke-width:3}
+.roulette-sector.is-selected{stroke:#244b5b;stroke-width:5}
+.roulette-label{fill:#203b46;text-anchor:middle;font-family:"Segoe UI","Malgun Gothic",sans-serif;font-size:16px;font-weight:700;pointer-events:none}
+.roulette-percentage{font-family:Consolas,monospace;font-size:27px;font-weight:900}
+.roulette-pointer{position:absolute;z-index:3;left:50%;top:-15px;transform:translateX(-50%);width:28px;height:34px;background:#244b5b;clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 2px 2px #0002);pointer-events:none}
+.roulette-hub{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:19%;height:19%;border-radius:50%;background:#fff;border:5px solid #eef3f5;box-shadow:0 3px 12px #294b6224;color:#365764;font:900 30px Consolas,monospace;pointer-events:none}
+.roulette-effects{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;margin:0 0 15px}
+.roulette-effect{border:1px solid #d8e4e7;border-left:4px solid var(--slice-color);border-radius:7px;background:#f9fcfc;padding:10px 12px;display:flex;align-items:flex-start;gap:9px;font-size:11px;line-height:1.7;color:#45616d}
+.roulette-effect b{flex-shrink:0;color:#274c5b;font:900 16px Consolas,monospace;margin-top:2px}
+.roulette-effect.is-selected{border-color:#315869;background:#eef7f5}
+.event-result{min-height:48px;font-weight:700}
+@media(max-width:480px){.event-content{padding:20px 16px}.roulette-label{font-size:17px}.roulette-effects{grid-template-columns:1fr}.roulette-effect{padding:8px 10px}.roulette-pointer{top:-13px;width:23px;height:29px}.roulette-hub{font-size:24px}}
+.cell.force-choice{cursor:pointer;outline:3px solid var(--p2);outline-offset:-5px;box-shadow:inset 0 0 0 7px #55d6dc22}.cell.force-choice:hover{outline-color:var(--gold)}
+</style>
+</head>
+<body>
+<main id="start-screen" class="start-screen" aria-labelledby="start-title">
+  <div class="start-content">
+    <div class="start-emblem" aria-hidden="true">
+      <svg viewBox="0 0 168 168" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M28 28H140V140H28V28Z" stroke="#37626f" stroke-width="2"/>
+        <path d="M28 56H84V84H56V112H112V140M112 28V56H140M112 84H140M28 112H56M84 28V56" stroke="#6995a2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M42 42V70H70V98H98V126H126" stroke="#70d6bc" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 6"/>
+        <circle cx="42" cy="42" r="9" fill="#ff735e" stroke="#f7fbfb" stroke-width="2"/>
+        <circle cx="126" cy="126" r="9" fill="#55d6dc" stroke="#f7fbfb" stroke-width="2"/>
+        <path d="M126 57L130 65L139 66L132 72L134 81L126 77L118 81L120 72L113 66L122 65L126 57Z" fill="#ffd166"/>
+      </svg>
+    </div>
+    <p class="start-eyebrow">MEMORY · RISK · RACE</p>
+    <h1 id="start-title" class="start-title">보이지 않는 미로</h1>
+    <p class="start-description">보이지 않는 벽을 기억하고, 상대의 움직임을 읽어보세요.<br>목적지에 먼저 도착해 승리를 향한 한 점을 얻으세요.</p>
+    <div class="start-facts"><span><b>2인</b> 함께 플레이</span><span><b>6×6</b> 숨겨진 미로</span><span><b>6점</b> 먼저 얻으면 승리</span></div>
+    <div class="start-actions"><button id="start-button" class="start-button" type="button">시작하기 <span aria-hidden="true">→</span></button><button id="start-rules-button" class="start-rules-button" type="button">게임 규칙 먼저 보기</button></div>
+    <p class="start-footnote">한 화면에서 번갈아 플레이해요.<br>방향 버튼과 키보드 방향키로 이동할 수 있어요.</p>
+  </div>
+</main>
+<main id="game-screen" class="shell" tabindex="-1" hidden>
+<header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><span class="kicker">MEMORY · RISK · RACE</span><h1>보이지 않는 미로</h1></div></div><div class="top-actions"><button id="rules-button" class="ghost-button" type="button">게임 규칙</button><button id="new-game-button" class="ghost-button" type="button">새 게임</button></div></header>
+<div class="game-layout">
+<aside class="card score-panel"><span class="section-label">Match status</span><div class="round-line"><div><span class="section-label">Round</span><strong id="round-number">1</strong></div><small>먼저 6점 획득</small></div>
+<section id="player-card-0" class="player-card" data-player="0"><div class="player-head"><span class="player-name"><i class="token-mini"></i>플레이어 1</span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-0">0</b><span>/ 6 PTS</span></div><div id="score-pips-0" class="score-pips"></div><div id="effects-0" class="effects">적용 중인 효과 없음</div></section>
+<section id="player-card-1" class="player-card" data-player="1"><div class="player-head"><span class="player-name"><i class="token-mini"></i>플레이어 2</span><span class="turn-badge">YOUR TURN</span></div><div class="score"><b id="score-1">0</b><span>/ 6 PTS</span></div><div id="score-pips-1" class="score-pips"></div><div id="effects-1" class="effects">적용 중인 효과 없음</div></section>
+<div class="legend"><span class="section-label">Board signals</span><div class="legend-list"><div class="legend-row"><i class="legend-icon">★</i>먼저 도착하면 1점</div><div class="legend-row"><i class="legend-icon">?</i>플레이어별 라운드당 1회</div><div class="legend-row"><i class="legend-icon">S</i>각 플레이어의 출발칸</div></div></div><div class="memory-note"><b>벽은 화면에 표시되지 않습니다.</b><br>상대의 이동과 충돌을 관찰하고 머리로 길을 기억하세요.</div></aside>
+<section class="card board-card"><div class="board-header"><div><span class="section-label">Live maze / 6 × 6</span><h2>탐사 보드</h2></div><span class="scanner"><i></i>WALL DATA HIDDEN</span></div><div class="board-frame"><div id="board" class="board" aria-label="6 곱하기 6 보이지 않는 미로 게임판"></div></div><div class="board-caption"><span>벽 충돌 시 출발점으로 즉시 복귀</span><span>같은 턴에 밟은 칸 재방문 금지</span></div></section>
+<aside class="card control-panel" id="control-panel"><span class="section-label">Turn console</span><div class="turn-display"><span class="section-label">Current explorer</span><div class="turn-title"><i class="turn-color"></i><strong id="turn-player">플레이어 1</strong></div><p id="turn-sub" class="turn-sub">주사위를 굴려 탐사를 시작하세요.</p></div><div class="dice-zone"><div id="die" class="die" aria-label="주사위 결과"></div><button id="roll-button" class="roll-button" type="button">주사위 굴리기</button></div><div class="move-counter">남은 이동 <b id="moves-left">—</b></div><div class="dpad-wrap"><div class="dpad" aria-label="이동 방향"><button class="direction up" data-direction="up" type="button" aria-label="위로 이동">↑</button><button class="direction left" data-direction="left" type="button" aria-label="왼쪽으로 이동">←</button><span class="direction-center">MOVE</span><button class="direction right" data-direction="right" type="button" aria-label="오른쪽으로 이동">→</button><button class="direction down" data-direction="down" type="button" aria-label="아래로 이동">↓</button></div></div><div class="message-box" aria-live="polite"><span class="message-title">SYSTEM MESSAGE</span><p id="message" class="message">새로운 미로가 생성되었습니다.</p></div><div class="event-status"><h3>이번 라운드 이벤트 사용 기록</h3><div id="event-uses" class="event-uses"></div></div></aside>
+</div>
+</main>
+<dialog id="rules-dialog" class="rules-dialog"><div class="dialog-top"><h2>플레이 방법</h2><button class="close-button" data-close="rules-dialog" type="button">닫기 ✕</button></div><div class="rules-content"><div class="rules-grid"><section class="rule-card"><b>01 · 목표</b><p>보이지 않는 벽을 기억하며 목적지 ★에 먼저 도착하세요. 라운드 승자는 1점, 먼저 6점을 얻으면 최종 승리합니다.</p></section><section class="rule-card"><b>02 · 자신의 턴</b><p>주사위 수만큼 상하좌우로 한 칸씩 이동합니다. 이동 수를 모두 써야 하며 목적지 또는 벽에 닿으면 즉시 처리가 끝납니다.</p></section><section class="rule-card"><b>03 · 이동 제한</b><ul><li>같은 턴에 밟은 칸과 시작한 칸은 다시 밟을 수 없습니다.</li><li>상대의 현재 칸과 상대 출발칸에는 들어갈 수 없습니다.</li><li>대각선 이동은 불가능합니다.</li></ul></section><section class="rule-card"><b>04 · 보이지 않는 벽</b><p>벽 방향을 선택하면 출발칸으로 돌아가고 남은 이동을 잃습니다. 벽 배치는 라운드가 바뀌어도 유지됩니다.</p></section><section class="rule-card"><b>05 · 다음 라운드</b><p>양쪽 말을 출발칸으로 돌리고 목적지·이벤트 칸과 사용 기록을 초기화합니다. 직전 라운드에서 득점하지 못한 사람이 먼저 시작합니다.</p></section><section class="rule-card"><b>06 · 이벤트</b><p>각 이벤트 칸은 플레이어마다 라운드당 한 번 사용할 수 있습니다. 임시 벽 설치·제거는 라운드가 끝나면 복구되며, 벽 재구성 결과는 이후 라운드에도 유지됩니다. 이벤트 칸을 사용하면 남은 이동을 모두 잃고, 효과 처리가 끝난 뒤 상대의 차례로 넘어갑니다.</p></section></div><section class="rule-card" style="margin-top:12px"><b>룰렛 효과와 확률</b><ul><li><strong>28%</strong> — 판에 원하는 벽 하나 설치하기. 설치한 벽은 다음 라운드에 사라집니다.</li><li><strong>28%</strong> — 판에서 원하는 벽 하나 지우기. 지운 벽은 다음 라운드에 다시 생깁니다.</li><li><strong>14%</strong> — 판의 벽을 재구성하기. 새 벽 배치는 이후 라운드에도 계속 적용됩니다.</li><li><strong>30%</strong> — 강제 이동할 상대 플레이어가 직전에 온 길을 제외한 이동 가능한 방향을 직접 선택해 한 칸 이동합니다. 이동 가능한 방향이 없으면 이동 없이 효과가 끝납니다. 상대가 목적지에 도착하면 상대가 1점을 얻고 새 라운드를 시작합니다.</li></ul><p style="margin-top:9px">확률의 합은 100%입니다. 벽 설치로 모든 칸의 연결이 끊기는 위치는 선택할 수 없습니다.</p></section></div></dialog>
+<dialog id="event-dialog" class="event-dialog"><div class="event-content"><span class="section-label">Mystery signal detected</span><div class="roulette-shell"><span class="roulette-pointer" aria-hidden="true"></span><div id="roulette" class="roulette" role="img" aria-label="효과와 확률을 표시하는 룰렛"></div><span class="roulette-hub" aria-hidden="true">?</span></div><div id="roulette-effects" class="roulette-effects"></div><h3>이벤트 룰렛</h3><p>이 칸은 이번 라운드에 한 번만 사용할 수 있어요.</p><p id="event-result" class="event-result" aria-live="polite">룰렛을 돌려 효과를 확인하세요.</p><button id="spin-button" class="spin-button" type="button">룰렛 돌리기</button></div></dialog>
+<dialog id="win-dialog" class="win-dialog"><div class="win-content"><div class="trophy" aria-hidden="true">◆</div><span class="section-label">Maze conquered</span><h2 id="win-title">플레이어 1 승리!</h2><p id="win-copy"></p><button id="play-again-button" class="continue-button" type="button">새 게임 시작</button></div></dialog>
+<script>
+
+(()=>{'use strict';
+
+const SIZE=6,CELLS=36,STARTS=[0,35],TARGET_SCORE=6;
+const DIRS={up:{dr:-1,dc:0,label:'위'},down:{dr:1,dc:0,label:'아래'},left:{dr:0,dc:-1,label:'왼쪽'},right:{dr:0,dc:1,label:'오른쪽'}};
+const state={round:1,current:0,phase:'roll',movesLeft:0,die:1,goal:1,events:[],passages:new Set(),turnVisited:new Set(),tempInstalled:new Set(),tempRemoved:new Set(),wallMode:null,wallFirst:null,forcedPlayer:null,players:[{score:0,pos:0,lastPos:null,used:new Set()},{score:0,pos:35,lastPos:null,used:new Set()}]};
+const $=id=>document.getElementById(id);
+
+let gameRun=0;
+let wheelRotation=0;
+const liveAnimations=new Set();
+const motionNodes=new Set();
+function later(callback,delay){const run=gameRun;return setTimeout(()=>{if(run===gameRun)callback()},delay)}
+function reducedMotion(){return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)}
+async function playMotion(node,keyframes,options){
+  if(reducedMotion()||typeof node.animate!=='function')return true;
+  const animation=node.animate(keyframes,options);liveAnimations.add(animation);
+  try{await animation.finished;return true}catch{return false}finally{liveAnimations.delete(animation);animation.cancel()}
+}
+function cancelMotion(){gameRun++;for(const animation of liveAnimations)animation.cancel();liveAnimations.clear();for(const node of motionNodes)node.remove();motionNodes.clear();$('board').classList.remove('goal-arriving')}
+function boardCell(index){return $('board').querySelector('[data-index="'+index+'"]')}
+async function animatePawn(playerIndex,destination,bounceDirection){
+  const run=gameRun,source=boardCell(state.players[playerIndex].pos)?.querySelector('.pawn'),target=boardCell(destination);
+  if(!source||!target||reducedMotion())return run===gameRun;
+  const sourceRect=source.getBoundingClientRect(),targetRect=target.getBoundingClientRect();
+  const dx=targetRect.left+targetRect.width/2-sourceRect.left-sourceRect.width/2,dy=targetRect.top+targetRect.height/2-sourceRect.top-sourceRect.height/2;
+  const ghost=pawn(playerIndex);ghost.classList.add('motion-pawn');Object.assign(ghost.style,{left:sourceRect.left+'px',top:sourceRect.top+'px',width:sourceRect.width+'px',height:sourceRect.height+'px'});
+  ghost.setAttribute('aria-hidden','true');document.body.append(ghost);motionNodes.add(ghost);source.style.visibility='hidden';
+  try{
+    if(bounceDirection){
+      const rect=boardCell(state.players[playerIndex].pos).getBoundingClientRect(),d=DIRS[bounceDirection],bx=d.dc*rect.width*.40,by=d.dr*rect.height*.40;
+      const squish=d.dc?'scale(.84,1.10)':'scale(1.10,.84)';
+      const completed=await playMotion(ghost,[{transform:'translate(0,0) scale(1)',offset:0},{transform:'translate('+bx+'px,'+by+'px) '+squish,offset:.40},{transform:'translate('+(-bx*.15)+'px,'+(-by*.15)+'px) scale(1.08)',offset:.70},{transform:'translate(0,0) scale(1)',offset:1}],{duration:440,easing:'ease-out'});
+      if(!completed||run!==gameRun)return false;
+    }
+    const completed=await playMotion(ghost,[{transform:'translate(0,0) scale(1)'},{transform:'translate('+dx/2+'px,'+(dy/2-5)+'px) scale(1.08)',offset:.5},{transform:'translate('+dx+'px,'+dy+'px) scale(1)'}],{duration:bounceDirection?480:280,easing:'cubic-bezier(.22,.61,.36,1)'});
+    return completed&&run===gameRun;
+  }finally{source.style.visibility='';ghost.remove();motionNodes.delete(ghost)}
+}
+async function revealGoal(run=gameRun){
+  state.phase='intro';$('board').classList.add('goal-arriving');updateControls();setMessage('큰 별이 내려오는 칸이 이번 라운드의 목적지입니다.');
+  try{
+    await new Promise(resolve=>requestAnimationFrame(resolve));if(run!==gameRun)return;
+    const target=boardCell(state.goal)?.querySelector('.goal-mark');if(!target)return;
+    if(!reducedMotion()){
+      const rect=target.getBoundingClientRect(),size=Math.min(180,window.innerWidth*.35),left=(window.innerWidth-size)/2,top=(window.innerHeight-size)/2;
+      const star=document.createElement('span');star.className='goal-flight';star.setAttribute('aria-hidden','true');Object.assign(star.style,{width:size+'px',height:size+'px',left:left+'px',top:top+'px'});document.body.append(star);motionNodes.add(star);
+      const dx=rect.left+rect.width/2-window.innerWidth/2,dy=rect.top+rect.height/2-window.innerHeight/2,scale=rect.width/size;
+      try{await playMotion(star,[{transform:'translate(0,-25px) scale(.85) rotate(-12deg)',opacity:0,offset:0},{transform:'translate(0,0) scale(1.12) rotate(7deg)',opacity:1,offset:.20},{transform:'translate(0,0) scale(1) rotate(0deg)',opacity:1,offset:.35},{transform:'translate('+dx+'px,'+dy+'px) scale('+scale+') rotate(0deg)',opacity:1,offset:1}],{duration:1250,easing:'cubic-bezier(.35,.05,.35,1)'})}finally{star.remove();motionNodes.delete(star)}
+    }
+  }finally{if(run===gameRun){$('board').classList.remove('goal-arriving');state.phase='roll';setMessage('목적지가 도착했습니다. 플레이어 '+(state.current+1)+'이 주사위를 굴려 시작하세요.');updateControls();if(!$('rules-dialog').open)$('roll-button').focus({preventScroll:true})}}
+}
+
+const randomInt=max=>Math.floor(Math.random()*max);
+function shuffle(items){const result=[...items];for(let i=result.length-1;i>0;i--){const j=randomInt(i+1);[result[i],result[j]]=[result[j],result[i]]}return result}
+function key(a,b){return a<b?a+'-'+b:b+'-'+a}
+function adjacent(index,name){const row=Math.floor(index/SIZE),col=index%SIZE,d=DIRS[name],nr=row+d.dr,nc=col+d.dc;if(nr<0||nr>=SIZE||nc<0||nc>=SIZE)return null;return nr*SIZE+nc}
+function neighbors(index){const out=[];for(const name of Object.keys(DIRS)){const next=adjacent(index,name);if(next!==null)out.push({name,index:next})}return out}
+function generateMaze(){
+  const passages=new Set(),seen=new Set([0]),stack=[0];
+  while(stack.length){const at=stack[stack.length-1],choices=shuffle(neighbors(at).filter(n=>!seen.has(n.index)));if(!choices.length){stack.pop();continue}const next=choices[0].index;passages.add(key(at,next));seen.add(next);stack.push(next)}
+  for(let cell=0;cell<CELLS;cell++)for(const n of neighbors(cell))if(cell<n.index&&!passages.has(key(cell,n.index))&&Math.random()<.18)passages.add(key(cell,n.index));
+  let changed=true;while(changed){changed=false;for(let cell=0;cell<CELLS;cell++){const degree=neighbors(cell).filter(n=>passages.has(key(cell,n.index))).length;if(degree<2){const choices=shuffle(neighbors(cell).filter(n=>!passages.has(key(cell,n.index))));if(choices.length){passages.add(key(cell,choices[0].index));changed=true}}}}
+  state.passages=passages;
+}
+function mazeConnected(){const seen=new Set([0]),queue=[0];while(queue.length){const at=queue.shift();for(const n of neighbors(at))if(state.passages.has(key(at,n.index))&&!seen.has(n.index)){seen.add(n.index);queue.push(n.index)}}return seen.size===CELLS}
+function restoreTemporaryWalls(){for(const edge of state.tempInstalled)state.passages.add(edge);for(const edge of state.tempRemoved)state.passages.delete(edge);state.tempInstalled.clear();state.tempRemoved.clear();state.wallMode=null;state.wallFirst=null}
+function placeRoundItems(){const open=shuffle(Array.from({length:CELLS},(_,i)=>i).filter(i=>!STARTS.includes(i)));state.goal=open[0];state.events=open.slice(1,4)}
+function pawn(player){const node=document.createElement('span');node.className='pawn p'+(player+1);node.textContent='P'+(player+1);node.setAttribute('aria-label','플레이어 '+(player+1));return node}
+function activePlayer(){return state.forcedPlayer===null?state.current:state.forcedPlayer}
+function renderBoard(){
+  const board=$('board');board.replaceChildren();
+  const forcedChoices=state.phase==='force-select'?forcedMoveChoices():[];
+  for(let i=0;i<CELLS;i++){
+    const cell=document.createElement('div');cell.className='cell';cell.dataset.index=String(i);cell.setAttribute('aria-label',(Math.floor(i/SIZE)+1)+'행 '+(i%SIZE+1)+'열');
+    if(state.turnVisited.has(i))cell.classList.add('turn-visited');if(forcedChoices.some(choice=>choice.index===i)){cell.classList.add('force-choice');cell.setAttribute('aria-label',cell.getAttribute('aria-label')+', 강제 이동 선택 가능')}if(state.phase==='wall-select'&&state.wallFirst===i)cell.classList.add('wall-selected');
+    if(i===state.goal){cell.classList.add('goal');const mark=document.createElement('span');mark.className='goal-mark';mark.setAttribute('aria-hidden','true');cell.append(mark)}
+    const eventIndex=state.events.indexOf(i);if(eventIndex>=0){cell.classList.add('event-cell');const mark=document.createElement('span');mark.className='event-mark';mark.setAttribute('aria-hidden','true');cell.append(mark);cell.setAttribute('aria-label',cell.getAttribute('aria-label')+', 이벤트 '+(eventIndex+1))}
+    for(let p=0;p<2;p++)if(i===STARTS[p]){const mark=document.createElement('span');mark.className='start-mark';mark.style.setProperty('--start',p===0?'var(--p1)':'var(--p2)');const label=document.createElement('span');label.className='start-label';label.textContent='P'+(p+1)+' START';cell.append(mark,label)}
+    for(let p=0;p<2;p++)if(state.players[p].pos===i){cell.append(pawn(p));if(p===activePlayer())cell.classList.add('current')}
+    board.append(cell);
+  }
+}
+function renderScores(){
+  for(let p=0;p<2;p++){
+    $('score-'+p).textContent=String(state.players[p].score);const pips=$('score-pips-'+p);pips.replaceChildren();for(let i=0;i<TARGET_SCORE;i++){const dot=document.createElement('i');if(i<state.players[p].score)dot.className='on';pips.append(dot)}
+    $('player-card-'+p).classList.toggle('active',p===activePlayer()&&state.phase!=='over');const effects=$('effects-'+p);effects.replaceChildren();const changes=state.tempInstalled.size+state.tempRemoved.size;effects.textContent=changes?'이번 라운드 임시 벽 변경 '+changes+'개':'이번 라운드 임시 벽 변경 없음';
+  }
+  $('round-number').textContent=String(state.round);
+}
+const DOTS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8],7:[0,2,3,4,5,6,8],8:[0,1,2,3,5,6,7,8]};
+function setDie(value){const die=$('die');die.replaceChildren();for(let i=0;i<9;i++){const slot=document.createElement('span');if((DOTS[value]||DOTS[1]).includes(i))slot.className='dot';die.append(slot)}die.setAttribute('aria-label','주사위 '+value)}
+function blockedByRule(direction){const next=adjacent(state.players[state.current].pos,direction);if(next===null)return false;if(state.turnVisited.has(next))return true;const other=1-state.current;return next===state.players[other].pos||next===STARTS[other]}
+function updateEventUses(){const box=$('event-uses');box.replaceChildren();state.events.forEach((cell,i)=>{for(let p=0;p<2;p++){const chip=document.createElement('span');chip.className='event-use'+(state.players[p].used.has(cell)?' used':'');chip.textContent='E'+(i+1)+' · P'+(p+1)+(state.players[p].used.has(cell)?' ✓':'');box.append(chip)}})}
+function updateControls(){
+  const player=activePlayer(),color=player===0?'var(--p1)':'var(--p2)';$('control-panel').style.setProperty('--active-color',color);$('turn-player').textContent='플레이어 '+(player+1)+(state.forcedPlayer!==null?' · 강제 이동':'');$('moves-left').textContent=state.phase==='force-select'?'1':['move','animating','event','roulette'].includes(state.phase)?String(state.movesLeft):'—';$('roll-button').disabled=state.phase!=='roll';
+  for(const button of document.querySelectorAll('[data-direction]'))button.disabled=state.phase==='force-select'?!forcedMoveChoices().some(choice=>choice.direction===button.dataset.direction):state.phase!=='move'||state.movesLeft<=0||blockedByRule(button.dataset.direction);
+  $('turn-sub').textContent=state.phase==='force-select'?'강제 이동할 플레이어가 방향 버튼이나 표시된 칸을 선택하세요.':state.phase==='roll'?'주사위를 굴려 탐사를 시작하세요.':state.phase==='move'?'방향을 골라 한 칸씩 이동하세요.':state.phase==='event'?'이벤트 룰렛 결과를 기다리는 중입니다.':state.phase==='wall-select'?'보드에서 인접한 두 칸을 차례로 선택하세요.':state.phase==='intro'?'목적지 별이 도착하는 중입니다.':state.phase==='collision'?'벽에 부딪혀 출발칸으로 돌아가는 중입니다.':state.phase==='animating'?'말이 다음 칸으로 이동하는 중입니다.':state.phase==='roulette'?'룰렛이 멈출 때까지 기다려 주세요.':'처리 중입니다.';renderScores();updateEventUses();
+}
+function setMessage(text){$('message').textContent=text}
+function renderAll(){renderBoard();updateControls();setDie(state.die)}
+function endTurn(){if(state.phase==='over')return;state.current=1-state.current;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();setMessage('플레이어 '+(state.current+1)+'의 차례입니다. 주사위를 굴리세요.');renderAll()}
+function rollDice(){
+  if(state.phase!=='roll')return;state.phase='rolling';updateControls();$('die').classList.add('rolling');$('roll-button').textContent='탐색 중…';
+  later(()=>{const player=state.players[state.current],raw=1+randomInt(6);state.die=raw;state.movesLeft=raw;state.turnVisited=new Set([player.pos]);state.phase='move';$('die').classList.remove('rolling');$('roll-button').textContent='주사위 굴리기';setMessage('주사위 '+raw+'! 이동할 방향을 선택하세요.');renderAll()},480)
+}
+async function collide(direction){
+  const run=gameRun,playerIndex=state.current;state.phase='collision';state.movesLeft=0;setMessage('벽에 부딪혔습니다! 살짝 튕긴 뒤 출발칸으로 돌아갑니다.');updateControls();
+  if(!await animatePawn(playerIndex,STARTS[playerIndex],direction)||run!==gameRun)return;
+  state.players[playerIndex].pos=STARTS[playerIndex];state.players[playerIndex].lastPos=null;state.phase='pause';renderAll();later(endTurn,220);
+}
+
+function scoreGoal(scorer=state.current){state.phase='pause';state.movesLeft=0;state.players[scorer].score++;setMessage('플레이어 '+(scorer+1)+'이 목적지에 도착해 1점을 얻었습니다!');renderAll();if(state.players[scorer].score>=TARGET_SCORE){state.phase='over';renderAll();later(()=>{$('win-title').textContent='플레이어 '+(scorer+1)+' 승리!';$('win-copy').textContent=state.round+'라운드의 기억과 추리 끝에 먼저 6점을 획득했습니다.';$('win-dialog').showModal()},500);return}later(()=>startNextRound(scorer),950)}
+function startNextRound(scorer){restoreTemporaryWalls();state.round++;state.current=1-scorer;state.phase='roll';state.movesLeft=0;state.turnVisited=new Set();state.players.forEach((p,i)=>{p.pos=STARTS[i];p.lastPos=null;p.used=new Set()});placeRoundItems();setMessage('새 라운드의 목적지를 배치했습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)}
+async function move(direction){
+  if(state.phase==='force-select'){await chooseForcedMove(direction);return}
+  if(state.phase!=='move'||blockedByRule(direction))return;
+  const run=gameRun,playerIndex=state.current,player=state.players[playerIndex],from=player.pos,next=adjacent(from,direction);
+  if(next===null||!state.passages.has(key(from,next))){await collide(direction);return}
+  state.phase='animating';updateControls();
+  if(!await animatePawn(playerIndex,next)||run!==gameRun)return;
+  player.lastPos=from;player.pos=next;state.turnVisited.add(next);state.movesLeft--;state.phase='move';
+  setMessage(DIRS[direction].label+'쪽으로 이동했습니다. 남은 이동 '+state.movesLeft+'칸.');renderBoard();updateControls();
+  if(next===state.goal){scoreGoal();return}
+  if(state.events.includes(next)&&!player.used.has(next)){
+    player.used.add(next);state.movesLeft=0;state.phase='event';updateControls();setMessage('이벤트 칸을 사용해 남은 이동이 사라졌습니다. 룰렛 효과 처리 후 상대의 차례로 넘어갑니다.');
+    $('event-result').textContent='네 영역의 효과와 확률을 확인하고 룰렛을 돌려보세요.';$('spin-button').hidden=false;$('spin-button').disabled=false;renderRoulette();$('event-dialog').showModal();return;
+  }
+  if(state.movesLeft<=0){state.phase='pause';updateControls();setMessage('이동을 모두 마쳤습니다. 상대의 차례로 넘어갑니다.');later(endTurn,350)}
+}
+
+const EVENT_TABLE=[
+  {weight:28,type:'install',text:'판에 원하는 벽 하나 설치하기 — 다음 라운드에 사라집니다.'},
+  {weight:28,type:'remove',text:'판에서 원하는 벽 하나 지우기 — 다음 라운드에 다시 생깁니다.'},
+  {weight:14,type:'rebuild',text:'판의 벽을 재구성하기 — 이후 라운드에도 계속 적용됩니다.'},
+  {weight:30,type:'force',text:'상대가 직전에 온 길을 제외한 방향을 직접 선택해 한 칸 이동합니다.'}
+];
+function pickEvent(){const total=EVENT_TABLE.reduce((sum,e)=>sum+e.weight,0);let roll=Math.random()*total;for(const event of EVENT_TABLE){roll-=event.weight;if(roll<0)return event}return EVENT_TABLE[0]}
+function resumeAfterEvent(message='이벤트 처리가 끝났습니다. 상대의 차례로 넘어갑니다.'){if(state.phase==='over')return;state.movesLeft=0;state.phase='pause';setMessage(message);renderAll();later(endTurn,450)}
+function beginWallSelection(type){state.wallMode=type;state.wallFirst=null;state.phase='wall-select';setMessage(type==='install'?'벽을 설치할 위치의 첫 번째 칸을 선택하세요.':'지울 벽 양쪽의 첫 번째 칸을 선택하세요.');renderAll()}
+function chooseWallCell(cell){
+  if(state.phase!=='wall-select')return;
+  if(state.wallFirst===null){state.wallFirst=cell;setMessage('선택한 칸과 맞닿은 두 번째 칸을 선택하세요.');renderBoard();return}
+  const first=state.wallFirst;if(first===cell||!neighbors(first).some(n=>n.index===cell)){state.wallFirst=cell;setMessage('서로 맞닿은 두 칸이어야 합니다. 새 첫 번째 칸을 선택했어요.');renderBoard();return}
+  const edge=key(first,cell);
+  if(state.wallMode==='install'){
+    if(!state.passages.has(edge)){state.wallFirst=null;setMessage('선택한 두 칸 사이에는 이미 벽이 있습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    state.passages.delete(edge);if(!mazeConnected()){state.passages.add(edge);state.wallFirst=null;setMessage('모든 칸의 연결을 유지해야 하므로 이곳에는 설치할 수 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    if(!state.tempRemoved.delete(edge))state.tempInstalled.add(edge);setMessage('선택한 위치에 벽을 설치했습니다. 이 벽은 다음 라운드에 사라집니다.');
+  }else{
+    if(state.passages.has(edge)){state.wallFirst=null;setMessage('선택한 두 칸 사이에는 지울 벽이 없습니다. 다른 위치를 선택하세요.');renderBoard();return}
+    state.passages.add(edge);if(!state.tempInstalled.delete(edge))state.tempRemoved.add(edge);setMessage('선택한 위치의 벽을 지웠습니다. 이 벽은 다음 라운드에 다시 생깁니다.');
+  }
+  state.wallMode=null;state.wallFirst=null;state.phase='pause';renderAll();later(resumeAfterEvent,650)
+}
+function forcedMoveChoices(){
+  if(state.forcedPlayer===null)return[];
+  const player=state.players[state.forcedPlayer],other=1-state.forcedPlayer;
+  return Object.keys(DIRS).map(direction=>({direction,index:adjacent(player.pos,direction)})).filter(choice=>choice.index!==null&&state.passages.has(key(player.pos,choice.index))&&choice.index!==player.lastPos&&choice.index!==state.players[other].pos&&choice.index!==STARTS[other]);
+}
+function beginForcedMove(){
+  state.forcedPlayer=1-state.current;state.movesLeft=0;
+  if(!forcedMoveChoices().length){state.forcedPlayer=null;resumeAfterEvent('직전에 온 길을 제외하면 이동 가능한 방향이 없습니다. 강제 이동을 마치고 상대의 차례로 넘어갑니다.');return}
+  state.phase='force-select';setMessage('플레이어 '+(state.forcedPlayer+1)+'이 직접 강제 이동 방향을 선택하세요. 직전에 온 길로는 돌아갈 수 없습니다.');renderAll();
+  const button=Array.from(document.querySelectorAll('[data-direction]')).find(node=>!node.disabled);if(button)button.focus({preventScroll:true});
+}
+async function chooseForcedMove(direction){
+  if(state.phase!=='force-select')return;
+  const choice=forcedMoveChoices().find(item=>item.direction===direction);if(!choice)return;
+  const run=gameRun,playerIndex=state.forcedPlayer,player=state.players[playerIndex],from=player.pos,next=choice.index;
+  state.phase='animating';renderAll();
+  if(!await animatePawn(playerIndex,next)||run!==gameRun)return;
+  player.lastPos=from;player.pos=next;state.forcedPlayer=null;renderBoard();
+  if(next===state.goal){scoreGoal(playerIndex);return}
+  resumeAfterEvent('플레이어 '+(playerIndex+1)+'이 선택한 방향으로 한 칸 이동했습니다. 이제 주사위를 굴리는 차례입니다.');
+}
+
+async function applyEvent(event){
+  if(event.type==='install'||event.type==='remove'){beginWallSelection(event.type);return'wall'}
+  if(event.type==='rebuild'){state.tempInstalled.clear();state.tempRemoved.clear();state.wallMode=null;state.wallFirst=null;generateMaze();setMessage('판의 벽을 재구성했습니다. 이 배치는 다음 라운드에도 유지됩니다.');renderAll();return'done'}
+  if(event.type==='force'){beginForcedMove();return'force'}return'done';
+}
+
+
+function rouletteGeometry(){const total=EVENT_TABLE.reduce((sum,event)=>sum+event.weight,0);let cursor=0;return EVENT_TABLE.map(event=>{const from=cursor;cursor+=event.weight/total*360;return{event,from,to:cursor,percentage:Number((event.weight/total*100).toFixed(2))}})}
+function svgNode(tag,attributes={}){const node=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [name,value] of Object.entries(attributes))node.setAttribute(name,String(value));return node}
+function wheelPoint(angle,radius){const radians=(angle-90)*Math.PI/180;return{x:260+radius*Math.cos(radians),y:260+radius*Math.sin(radians)}}
+function alignWheelLabels(){for(const label of $('roulette').querySelectorAll('[data-wheel-label]'))label.setAttribute('transform','translate('+label.dataset.x+','+label.dataset.y+') rotate('+(-wheelRotation)+' )')}
+function renderRoulette(){
+  const rotor=$('roulette'),legend=$('roulette-effects');rotor.replaceChildren();legend.replaceChildren();
+  const svg=svgNode('svg',{viewBox:'0 0 520 520','aria-hidden':'true'}),colors=['#ffe1b6','#c9eee5','#e2ddfb','#cfe8fb'];
+  const lines={install:['원하는 벽','하나 설치'],remove:['원하는 벽','하나 지우기'],rebuild:['판의 벽','전체 재구성'],force:['상대를','한 칸 이동']};
+  for(const [index,slice] of rouletteGeometry().entries()){
+    const start=wheelPoint(slice.from,250),end=wheelPoint(slice.to,250),large=slice.to-slice.from>180?1:0;
+    const path=svgNode('path',{d:'M260 260 L'+start.x+' '+start.y+' A250 250 0 '+large+' 1 '+end.x+' '+end.y+' Z',fill:colors[index],class:'roulette-sector','data-effect-type':slice.event.type});svg.append(path);
+    const point=wheelPoint((slice.from+slice.to)/2,160),group=svgNode('g',{'data-wheel-label':'true','data-x':point.x,'data-y':point.y}),text=svgNode('text',{class:'roulette-label'});
+    for(const [lineIndex,line] of lines[slice.event.type].entries()){const tspan=svgNode('tspan',{x:0,y:lineIndex===0?-16:7});tspan.textContent=line;text.append(tspan)}
+    const percentage=svgNode('tspan',{x:0,y:41,class:'roulette-percentage'});percentage.textContent=slice.percentage+'%';text.append(percentage);group.append(text);svg.append(group);
+    const row=document.createElement('div');row.className='roulette-effect';row.dataset.effectType=slice.event.type;row.style.setProperty('--slice-color',colors[index]);const value=document.createElement('b');value.textContent=slice.percentage+'%';const copy=document.createElement('span');copy.textContent=slice.event.text;row.append(value,copy);legend.append(row);
+  }
+  rotor.append(svg);rotor.style.transform='rotate('+wheelRotation+'deg)';alignWheelLabels();rotor.setAttribute('aria-label',rouletteGeometry().map(slice=>slice.event.text+' '+slice.percentage+'%').join(' / '));
+}
+async function spinEvent(){
+  if(state.phase!=='event')return;
+  const run=gameRun,event=pickEvent(),slice=rouletteGeometry().find(item=>item.event===event),center=(slice.from+slice.to)/2;
+  state.phase='roulette';updateControls();$('spin-button').disabled=true;$('event-result').textContent='룰렛이 돌아가고 있어요…';
+  const target=wheelRotation+360*5+((360-(wheelRotation+center)%360)%360);
+  const completed=await playMotion($('roulette'),[{transform:'rotate('+wheelRotation+'deg)'},{transform:'rotate('+target+'deg)'}],{duration:3600,easing:'cubic-bezier(.12,.78,.10,1)'});
+  if(!completed||run!==gameRun)return;
+  wheelRotation=target;$('roulette').style.transform='rotate('+wheelRotation+'deg)';alignWheelLabels();
+  for(const node of document.querySelectorAll('[data-effect-type]'))node.classList.toggle('is-selected',node.dataset.effectType===event.type);
+  $('event-result').textContent=event.text+' ('+slice.percentage+'%)';$('spin-button').hidden=true;
+  later(async()=>{if($('event-dialog').open)$('event-dialog').close();const outcome=await applyEvent(event);if(run===gameRun&&outcome==='done')resumeAfterEvent()},1800);
+}
+
+
+function newGame(){
+  cancelMotion();wheelRotation=0;
+  state.round=1;state.current=randomInt(2);state.phase='roll';state.movesLeft=0;state.die=1;state.turnVisited=new Set();state.tempInstalled=new Set();state.tempRemoved=new Set();state.wallMode=null;state.wallFirst=null;state.forcedPlayer=null;state.players=[{score:0,pos:STARTS[0],lastPos:null,used:new Set()},{score:0,pos:STARTS[1],lastPos:null,used:new Set()}];generateMaze();placeRoundItems();if($('win-dialog').open)$('win-dialog').close();if($('event-dialog').open)$('event-dialog').close();setMessage('새로운 보이지 않는 미로가 생성되었습니다.');state.phase='intro';renderAll();$('board').scrollIntoView({block:'center',behavior:'auto'});revealGoal(gameRun)
+}
+$('roll-button').addEventListener('click',rollDice);$('spin-button').addEventListener('click',spinEvent);
+for(const button of document.querySelectorAll('[data-direction]'))button.addEventListener('click',()=>move(button.dataset.direction));
+$('board').addEventListener('click',event=>{const cell=event.target.closest('.cell');if(!cell)return;const target=Number(cell.dataset.index);if(state.phase==='wall-select'){chooseWallCell(target);return}if(state.phase!=='move'&&state.phase!=='force-select')return;const at=state.players[activePlayer()].pos;for(const name of Object.keys(DIRS))if(adjacent(at,name)===target){move(name);break}});
+$('rules-button').addEventListener('click',()=>$('rules-dialog').showModal());
+for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',() => $(button.dataset.close).close());
+$('new-game-button').addEventListener('click',newGame);$('play-again-button').addEventListener('click',newGame);
+$('event-dialog').addEventListener('cancel',event=>event.preventDefault());
+$('rules-dialog').addEventListener('click',event=>{if(event.target===$('rules-dialog'))$('rules-dialog').close()});
+document.addEventListener('keydown',event=>{if((state.phase!=='move'&&state.phase!=='force-select')||$('rules-dialog').open||$('event-dialog').open||$('win-dialog').open)return;const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};if(map[event.key]){event.preventDefault();move(map[event.key])}});
+function startGame(){
+  if(!$('game-screen').hidden)return;
+  $('start-screen').hidden=true;
+  $('game-screen').hidden=false;
+  newGame();
+  $('game-screen').focus({preventScroll:true});
+}
+$('start-button').addEventListener('click',startGame);
+$('start-rules-button').addEventListener('click',()=>$('rules-dialog').showModal());
+renderRoulette();
+state.phase='menu';
+})();
+
+</script>
+</body>
+</html>

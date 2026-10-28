@@ -73,7 +73,7 @@ export function createRoomServer() {
         throw error('지원하지 않는 요청입니다.',405);
       }
       if(url.pathname.startsWith('/api/'))throw error('올바른 방 코드를 입력해 주세요.',404);
-      const files={'/':'index.html','/index.html':'index.html','/online.js':'online.js','/bot-ai.js':'bot-ai.js','/online.css':'online.css'};
+      const files={'/':'index.html','/index.html':'index.html','/online.js':'online.js','/bot-ai.js':'bot-ai.js','/dice.js':'dice.js','/dice-renderer.js':'dice-renderer.js','/dice.css':'dice.css','/tutorial.js':'tutorial.js','/tutorial.css':'tutorial.css','/online.css':'online.css'};
       const file=files[url.pathname];if(!file||!['GET','HEAD'].includes(req.method))throw error('페이지를 찾을 수 없습니다.',404);
       const bytes=await readFile(new URL(file,ROOT));res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:bytes);
     }catch(e){if(!res.headersSent)send(res,e.status||400,{error:e.message||'요청을 처리하지 못했습니다.'});else res.end()}

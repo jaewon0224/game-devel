@@ -69,6 +69,6 @@ for(const difficulty of ['easy','medium','hard'])test(difficulty+' completes a f
 
 test('start menu opens all three difficulty choices and launches the selected bot',async()=>{
   const vm=await import('node:vm'),{readFile}=await import('node:fs/promises'),html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/id="tutorial-button"[^>]*disabled/);assert.doesNotMatch(html,/id="bot-battle-button"[^>]*disabled/);
+  assert.doesNotMatch(html,/id="tutorial-button"[^>]*disabled/);assert.doesNotMatch(html,/id="bot-battle-button"[^>]*disabled/);
   for(const difficulty of ['easy','medium','hard']){const ui=gameUI({random:seeded(19)});ui.ids.get('game-screen').hidden=true;vm.runInContext(html.match(/<script id="menu-script">([\s\S]*?)<\/script>/)[1],ui.context);ui.ids.get('bot-battle-button').handlers.click();assert.equal(ui.ids.get('bot-difficulty-dialog').open,true);ui.ids.get('bot-'+difficulty+'-button').handlers.click();await flush();assert.equal(ui.ids.get('bot-difficulty-dialog').open,false);assert.equal(ui.ids.get('game-screen').hidden,false);assert.equal(ui.g.brain.difficulty,difficulty);ui.window.mazeGame.goHome()}
 });

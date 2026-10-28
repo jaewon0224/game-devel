@@ -13,7 +13,7 @@
     $('room-lobby').hidden=!inRoom||started;
     $('start-content').hidden=inRoom;
     $('room-tools').hidden=!inRoom;
-    for(const id of ['event-online-status','event-leave-room-button','win-leave-room-button'])$(id).hidden=!inRoom;
+    for(const id of ['event-online-status','event-leave-room-button','win-leave-room-button','dice-online-status','dice-leave-room-button'])$(id).hidden=!inRoom;
     if(!inRoom)return;
     if($('mode-dialog').open)$('mode-dialog').close();
     $('room-code').textContent=session.code;$('room-code-small').textContent=session.code;
@@ -25,10 +25,11 @@
     }
     $('room-start-button').hidden=session.player!==0;
     $('room-start-button').disabled=pending||!connected||!room?.players.every(p=>p.connected);
-    $('room-wait-note').textContent=session.player===0?'친구가 참가하면 게임 시작 버튼을 눌러 주세요.':'방장이 게임을 시작하면 함께 입장합니다.';
+    $('room-wait-note').textContent=session.player===0?(room?.players.every(p=>p.connected)?'시작 가능':'참가 대기'):'방장 시작 대기';
     const ready=connected&&room?.players.every(p=>p.connected);
     $('connection-state').textContent=!connected?'서버 재연결 중…':ready?'두 명 모두 접속 중':'상대 재접속 대기 · 조작이 잠겼습니다';
     $('connection-state').classList.toggle('is-offline',!ready);
+    $('dice-online-status').textContent=!ready?$('connection-state').textContent:'';
     $('event-online-status').textContent=!ready?$('connection-state').textContent:session.player===room?.game?.current?'내가 룰렛을 조작합니다.':'상대가 룰렛을 조작합니다.';
     $('new-game-button').disabled=session.player!==0||!ready||pending;
     $('new-game-button').textContent='새 게임';
@@ -47,7 +48,7 @@
   function reset(reason){
     closeSource();session=null;room=null;revision=-1;save();window.mazeGame?.leaveOnline();
     $('game-screen').hidden=true;$('start-screen').hidden=false;$('start-content').hidden=false;$('room-lobby').hidden=true;$('room-tools').hidden=true;
-    for(const id of ['event-online-status','event-leave-room-button','win-leave-room-button'])$(id).hidden=true;
+    for(const id of ['event-online-status','event-leave-room-button','win-leave-room-button','dice-online-status','dice-leave-room-button'])$(id).hidden=true;
     $('new-game-button').disabled=false;$('play-again-button').disabled=false;$('play-again-button').textContent='새 게임 시작';
     message(reason||'방에서 나왔습니다.');
   }
@@ -60,7 +61,7 @@
       let next;try{next=JSON.parse(event.data)}catch{return}
       if(next.version<revision)return;revision=next.version;room=next;connected=true;
       if(room.game){window.mazeGame.onlineSnapshot(room.game,session.player);$('start-screen').hidden=true;$('game-screen').hidden=false}
-      else {window.mazeGame.leaveOnline();$('game-screen').hidden=true;$('start-screen').hidden=false;message('초대 코드를 친구에게 공유하세요.')}
+      else {window.mazeGame.leaveOnline();$('game-screen').hidden=true;$('start-screen').hidden=false;message('')}
       renderRoom();
     };
     source.onerror=()=>{
@@ -90,14 +91,14 @@
     try{await request('/api/rooms/'+session.code+'/leave',{},true);reset()}catch(e){message(e.message);if(room?.game)$('message').textContent=e.message}finally{pending=false;renderRoom()}
   }
   async function copy(){
-    try{await navigator.clipboard.writeText(session.code);message('방 코드를 복사했습니다. 친구에게 보내 주세요.');$('connection-state').textContent='방 코드 복사 완료: '+session.code}catch{message('방 코드 '+session.code+'를 친구에게 알려 주세요.');$('connection-state').textContent='방 코드: '+session.code}
+    try{await navigator.clipboard.writeText(session.code);message('방 코드 복사 완료');$('connection-state').textContent='방 코드 복사 완료: '+session.code}catch{message('방 코드: '+session.code);$('connection-state').textContent='방 코드: '+session.code}
   }
   $('create-room-button').addEventListener('click',()=>enter(false));
   $('join-form').addEventListener('submit',event=>{event.preventDefault();enter(true)});
   $('join-code').addEventListener('input',()=>{$('join-code').value=$('join-code').value.toUpperCase().replace(/[^A-Z2-9]/g,'').slice(0,6)});
   $('room-start-button').addEventListener('click',()=>command('start'));
   for(const id of ['copy-room-button','copy-room-small'])$(id).addEventListener('click',copy);
-  for(const id of ['leave-room-button','leave-room-small','event-leave-room-button','win-leave-room-button'])$(id).addEventListener('click',leave);
+  for(const id of ['leave-room-button','leave-room-small','event-leave-room-button','win-leave-room-button','dice-leave-room-button'])$(id).addEventListener('click',leave);
   window.mazeOnline={active,canAct,command,get player(){return session?.player}};
   try{const previous=JSON.parse(sessionStorage.getItem(STORAGE));if(previous&&/^[A-HJ-NP-Z2-9]{6}$/.test(previous.code)&&typeof previous.token==='string'&&[0,1].includes(previous.player))session=previous}catch{}
   if(session&&['http:','https:'].includes(location.protocol))connect();

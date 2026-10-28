@@ -5,7 +5,7 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const botSource=await readFile(new URL('../bot-ai.js',import.meta.url),'utf8');
 const original=html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // Exercise the actual game handlers with deterministic DOM, animation and timer adapters.
-export function gameUI({reduced=true,random=Math.random}={}){
+export function gameUI({reduced=true,random=Math.random,dice=null}={}){
   const pending=[],timers=new Map(),ids=new Map();let timerId=0,online=false,now=0,randomSource=random;
   class Element{
     constructor(tag='div'){this.tagName=tag;this.children=[];this.dataset={};this.attributes={};this.className='';this.style={setProperty:(k,v)=>{this.style[k]=v}};this.handlers={};this.open=false;this.hidden=false;this.disabled=false;this.textContent='';this.classList={add:(...names)=>{this.className=[...new Set([...this.className.split(' ').filter(Boolean),...names])].join(' ')},remove:(...names)=>{this.className=this.className.split(' ').filter(n=>!names.includes(n)).join(' ')},contains:name=>this.className.split(' ').includes(name),toggle:(name,on)=>{on??=!this.classList.contains(name);on?this.classList.add(name):this.classList.remove(name);return on}}}
@@ -30,6 +30,7 @@ export function gameUI({reduced=true,random=Math.random}={}){
   const buttons=['up','down','left','right'].map(direction=>{const node=new Element('button');node.dataset.direction=direction;body.append(node);return node});
   const document={body,handlers:{},getElementById:id=>{assert.ok(ids.has(id),'Missing element '+id);return ids.get(id)},createElement:tag=>new Element(tag),createElementNS:(_,tag)=>new Element(tag),querySelectorAll:selector=>body.querySelectorAll(selector),addEventListener(type,fn){this.handlers[type]=fn}};
   const window={innerWidth:1200,innerHeight:900,matchMedia:()=>({matches:reduced}),mazeOnline:{active:()=>online,canAct:()=>true,command(){}}};
+  if(dice)window.MazeDice={create:()=>dice};
   const testMath=Object.create(Math);testMath.random=()=>randomSource();
   const context=vm.createContext({window,document,console,Math:testMath,setTimeout:(fn,delay)=>{timers.set(++timerId,{fn,delay,at:now+delay});return timerId},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>queueMicrotask(fn)});
   vm.runInContext(botSource,context);window.MazeBot=context.MazeBot;

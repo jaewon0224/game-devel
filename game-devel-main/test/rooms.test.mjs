@@ -43,7 +43,7 @@ test('two independent clients share a room, enforce turns and reconnect',async t
 });
 test('server serves game assets and rejects cross-origin writes and private files',async t=>{
   const {server}=createRoomServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve)}));
-  for(const asset of ['/','/online.js','/online.css','/bot-ai.js']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.ok((await response.text()).length>100)}
+  for(const asset of ['/','/online.js','/online.css','/bot-ai.js','/dice.js','/dice-renderer.js','/dice.css','/tutorial.js','/tutorial.css']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.ok((await response.text()).length>100)}
   assert.equal((await fetch(base+'/server.mjs')).status,404);assert.equal((await fetch(base+'/game-engine.mjs')).status,404);
   const rejected=await fetch(base+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://elsewhere.example'},body:'{}'});assert.equal(rejected.status,403);
 });

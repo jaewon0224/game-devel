@@ -1,0 +1,96 @@
+.tutorial-dialog{width:min(1080px,calc(100% - 28px));max-height:94vh;max-height:94dvh;padding:0;border:1px solid #cbded7;border-radius:18px;background:#fbfdfc;color:#203b46;box-shadow:0 28px 90px #193d3b40;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable both-edges}
+.tutorial-dialog::backdrop{background:#18384880;backdrop-filter:blur(6px)}
+.tutorial-content{position:relative;padding:44px 28px 22px}
+.tutorial-close{position:absolute;top:10px;right:10px;width:30px;height:30px;padding:0;border:1px solid #d3e1dc;border-radius:50%;background:#fff;color:#526e68;font-size:22px;cursor:pointer}
+.tutorial-lessons{--tutorial-duration:4s;display:grid;gap:20px}
+.tutorial-lesson{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"scene copy";gap:32px;align-items:center;min-width:0}.tutorial-lesson:nth-child(2){grid-template-areas:"copy scene"}.tutorial-lesson:nth-child(2) .tutorial-scene{justify-self:end}.tutorial-copy{grid-area:copy}
+.tutorial-lesson+.tutorial-lesson{padding-top:20px;border-top:1px solid #e1ebe6}
+.tutorial-scene{grid-area:scene;width:92%;max-width:440px;min-width:0;overflow:hidden;border:1px solid #d4e3dd;border-radius:12px;background:radial-gradient(ellipse at 45% 30%,#fff,#eaf3ed);isolation:isolate}
+.tutorial-scene svg{display:block;width:100%;height:auto;max-height:min(300px,calc((94dvh - 174px)*.45));overflow:hidden}
+.tutorial-copy h2{margin:0;font-size:clamp(23px,2.7vw,30px);font-weight:800;letter-spacing:-.05em;line-height:1.6;word-break:keep-all}
+.tutorial-footer{display:flex;justify-content:flex-end;margin-top:18px}
+.tutorial-replay{padding:9px 18px;border:1px solid #99c9b5;border-radius:9px;background:#edf8f2;color:#256e53;font:700 13px "Segoe UI","Malgun Gothic",sans-serif;cursor:pointer}
+.tutorial-replay:hover{background:#dff3e9}
+.tutorial-token,.tutorial-shadow{transform-box:view-box;transform-origin:0 0;transform:translate(96px,192px)}
+.tutorial-shadow{transform:translate(96px,198px);opacity:.25}
+.tutorial-wall,.tutorial-impact,.tutorial-trail,.tutorial-goal-ring{opacity:0}
+.tutorial-impact{transform-box:fill-box;transform-origin:center}
+.tutorial-goal-star,.tutorial-goal-ring{transform-box:view-box;transform-origin:0 0;transform:translate(224px,128px)}
+.tutorial-lessons.is-playing .tutorial-token--collision{animation:tutorial-collision var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-shadow--collision{animation:tutorial-collision-shadow var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-wall{animation:tutorial-wall var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-impact{animation:tutorial-impact var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-trail-1{animation:tutorial-trail-1 var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-trail-2{animation:tutorial-trail-2 var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-trail-3{animation:tutorial-trail-3 var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-token--goal{animation:tutorial-goal var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-shadow--goal{animation:tutorial-goal-shadow var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-goal-star{animation:tutorial-star var(--tutorial-duration) linear infinite}
+.tutorial-lessons.is-playing .tutorial-goal-ring{animation:tutorial-goal-ring var(--tutorial-duration) linear infinite}
+@keyframes tutorial-collision{
+  0%,8%{transform:translate(96px,192px) rotate(0deg) scale(1);opacity:1}
+  12%{transform:translate(128px,184px) rotate(-5deg) scale(1.06)}
+  16%,22%{transform:translate(160px,192px) rotate(0deg) scale(1)}
+  26%{transform:translate(192px,184px) rotate(-5deg) scale(1.06)}
+  30%,36%{transform:translate(224px,192px) rotate(0deg) scale(1)}
+  40%{transform:translate(224px,152px) rotate(3deg) scale(1.06)}
+  44%,52%{transform:translate(224px,128px) rotate(0deg) scale(1)}
+  56%{transform:translate(224px,116px) rotate(0deg) scale(1)}
+  57.5%{transform:translate(224px,110px) rotate(0deg) scale(1.18,.72)}
+  60%{transform:translate(224px,144px) rotate(-8deg) scale(.9,1.12)}
+  64%{transform:translate(208px,160px) rotate(-45deg) scale(1.25)}
+  70%{transform:translate(170px,198px) rotate(-145deg) scale(1.34);opacity:1}
+  77%{transform:translate(108px,252px) rotate(-290deg) scale(1.1);opacity:1}
+  84%,91%{transform:translate(36px,330px) rotate(-420deg) scale(.65);opacity:0}
+  92%{transform:translate(96px,192px) rotate(0deg) scale(.8);opacity:0}
+  97%,100%{transform:translate(96px,192px) rotate(0deg) scale(1);opacity:1}
+}
+@keyframes tutorial-collision-shadow{
+  0%,8%{transform:translate(96px,198px) scale(1);opacity:.25}
+  12%{transform:translate(128px,198px) scale(.8);opacity:.16}
+  16%,22%{transform:translate(160px,198px) scale(1);opacity:.25}
+  26%{transform:translate(192px,198px) scale(.8);opacity:.16}
+  30%,36%{transform:translate(224px,198px) scale(1);opacity:.25}
+  40%{transform:translate(224px,166px) scale(.8);opacity:.16}
+  44%,52%{transform:translate(224px,134px) scale(1);opacity:.25}
+  56%,57.5%{transform:translate(224px,118px) scale(1.12,.8);opacity:.25}
+  60%{transform:translate(224px,150px) scale(1);opacity:.22}
+  64%{transform:translate(208px,184px) scale(.8);opacity:.14}
+  70%{transform:translate(170px,226px) scale(.65);opacity:.1}
+  77%{transform:translate(108px,276px) scale(.6);opacity:.06}
+  84%,91%{transform:translate(36px,330px) scale(.5);opacity:0}
+  92%{transform:translate(96px,198px) scale(.8);opacity:0}
+  97%,100%{transform:translate(96px,198px) scale(1);opacity:.25}
+}
+@keyframes tutorial-wall{0%,55%{opacity:0}57.5%{opacity:.85}61%{opacity:.5}68%,100%{opacity:0}}
+@keyframes tutorial-impact{0%,55%{opacity:0;transform:scale(.45)}57.5%{opacity:1;transform:scale(1)}63%{opacity:0;transform:scale(1.8)}100%{opacity:0;transform:scale(1.8)}}
+@keyframes tutorial-trail-1{0%,15%{opacity:0}16%,84%{opacity:.35}92%,100%{opacity:0}}
+@keyframes tutorial-trail-2{0%,29%{opacity:0}30%,84%{opacity:.35}92%,100%{opacity:0}}
+@keyframes tutorial-trail-3{0%,43%{opacity:0}44%,84%{opacity:.35}92%,100%{opacity:0}}
+@keyframes tutorial-goal{
+  0%,8%{transform:translate(96px,192px) scale(1);opacity:1}
+  12%{transform:translate(128px,184px) scale(1.06)}
+  16%,22%{transform:translate(160px,192px) scale(1)}
+  26%{transform:translate(192px,184px) scale(1.06)}
+  30%,36%{transform:translate(224px,192px) scale(1)}
+  40%{transform:translate(224px,152px) scale(1.06)}
+  44%{transform:translate(224px,128px) scale(1)}
+  48%{transform:translate(224px,128px) scale(1.15)}
+  54%,82%{transform:translate(224px,128px) scale(1);opacity:1}
+  90%{transform:translate(224px,128px) scale(.9);opacity:0}
+  92%{transform:translate(96px,192px) scale(.8);opacity:0}
+  100%{transform:translate(96px,192px) scale(1);opacity:1}
+}
+@keyframes tutorial-goal-shadow{
+  0%,8%{transform:translate(96px,198px);opacity:.25}
+  16%,22%{transform:translate(160px,198px)}
+  30%,36%{transform:translate(224px,198px)}
+  44%,82%{transform:translate(224px,134px);opacity:.25}
+  90%{transform:translate(224px,134px);opacity:0}
+  92%{transform:translate(96px,198px);opacity:0}
+  100%{transform:translate(96px,198px);opacity:.25}
+}
+@keyframes tutorial-star{0%,42%{transform:translate(224px,128px) scale(1);opacity:1}48%{transform:translate(224px,110px) scale(1.35);opacity:1}60%,91%{transform:translate(224px,88px) scale(.7);opacity:0}92%{transform:translate(224px,128px) scale(.8);opacity:0}100%{transform:translate(224px,128px) scale(1);opacity:1}}
+@keyframes tutorial-goal-ring{0%,42%{transform:translate(224px,128px) scale(.5);opacity:0}48%{transform:translate(224px,128px) scale(1.1);opacity:.8}64%,100%{transform:translate(224px,128px) scale(2.4);opacity:0}}
+@media(max-width:620px){.tutorial-content{padding:44px 16px 18px}.tutorial-lesson{grid-template-columns:minmax(0,1fr);grid-template-areas:"scene" "copy";gap:12px}.tutorial-lesson:nth-child(2){grid-template-areas:"copy" "scene"}.tutorial-lesson .tutorial-scene,.tutorial-lesson:nth-child(2) .tutorial-scene{justify-self:center}.tutorial-copy{text-align:center}.tutorial-copy h2{font-size:21px;line-height:1.4}.tutorial-scene svg{max-height:none}.tutorial-footer{justify-content:center;margin-top:20px}}
+@media(prefers-reduced-motion:reduce){.tutorial-lessons.is-playing *{animation:none!important}.tutorial-lessons.is-playing .tutorial-token--collision{transform:translate(224px,114px)}.tutorial-lessons.is-playing .tutorial-shadow--collision{transform:translate(224px,120px);opacity:.25}.tutorial-lessons.is-playing .tutorial-wall{opacity:.7}.tutorial-lessons.is-playing .tutorial-impact{opacity:.65}.tutorial-lessons.is-playing .tutorial-trail{opacity:.3}.tutorial-lessons.is-playing .tutorial-token--goal{transform:translate(224px,128px)}.tutorial-lessons.is-playing .tutorial-shadow--goal{transform:translate(224px,134px)}.tutorial-lessons.is-playing .tutorial-goal-star{transform:translate(224px,102px) scale(1.15)}.tutorial-lessons.is-playing .tutorial-goal-ring{opacity:.7}}
