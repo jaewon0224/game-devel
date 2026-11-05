@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Death Knight — 액션 테스트</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; overflow: hidden; background: #06151e; color: #ecedf6; font-family: "Malgun Gothic", sans-serif; }
+    main { position: relative; width: 100%; height: 100vh; height: 100dvh; }
+    /* Gradient.png의 투명한 중앙을 살리고 화면 가장자리만 은은하게 어둡게 합니다. */
+    main::after {
+      content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background: url("assets/Gradient.png") center / 100% 100% no-repeat;
+      opacity: 0.32;
+    }
+    header { position: absolute; z-index: 1; inset: 20px 20px auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
+    .title-panel { padding: 12px 16px; border: 1px solid #ffffff20; border-radius: 8px; background: #171823d9; }
+    .header-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    h1 { margin: 5px 0 0; font-size: 22px; word-break: keep-all; }
+    .tag { color: #b3a0ff; font-size: 11px; letter-spacing: 2px; }
+    p { margin: 0; color: #e3dfed; font-size: 13px; line-height: 1.8; }
+    canvas { display: block; width: 100%; height: 100%; background: #06151e; touch-action: none; }
+    canvas:focus-visible { outline: 3px solid #b3a0ff; outline-offset: -3px; }
+    :fullscreen #game { outline: none; }
+    button:focus-visible { outline: 3px solid #b3a0ff; outline-offset: 4px; }
+    button { padding: 10px 16px; border: 1px solid #686184; border-radius: 6px; background: #302c47ed; color: #fff; font: inherit; cursor: pointer; pointer-events: auto; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    footer { position: absolute; z-index: 1; inset: auto 20px 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; pointer-events: none; }
+    footer p { padding: 8px 12px; border: 1px solid #ffffff20; border-radius: 6px; background: #171823d9; }
+    .instructions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+    .instructions p { max-width: 100%; }
+    #keyboard-status { color: #cfc2ff; }
+    #status { color: #d1bf92; flex-shrink: 0; white-space: nowrap; }
+    @media (max-width: 540px) { header { inset: 12px 12px auto; gap: 8px; } .header-actions { flex-direction: column; flex-shrink: 0; } footer { inset: auto 12px 12px; } .tag { font-size: 9px; letter-spacing: 1px; } h1 { font-size: 18px; } button { padding: 9px 11px; font-size: 12px; } footer p { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="title-panel"><span class="tag">RUINS / EXPLORATION</span><h1>Death Knight · 유적 맵</h1></div>
+      <div class="header-actions">
+        <button id="fullscreen" type="button" aria-pressed="false" aria-describedby="keyboard-status">전체화면 게임</button>
+        <button id="restart" type="button">위치 초기화</button>
+      </div>
+    </header>
+    <canvas id="game" width="960" height="576" tabindex="0" aria-label="데스 나이트 액션 연습장. WASD 또는 방향키로 8방향 이동하고 Shift를 누르면 달립니다. Ctrl키로 앉거나 일어나며, 앉은 상태에서는 천천히 이동합니다. 스페이스바로 공중제비 점프를 합니다. 걷거나 달리는 중 C키로 슬라이딩하며, 달리다가 사용하면 더 멀리 이동합니다. 마우스 왼쪽 클릭으로 가장 가까운 적을 향해 자동으로 방향을 잡아 공격하며, 누르고 있으면 세 가지 공격 모션을 순서대로 반복합니다. 매 공격 시작 시 적의 현재 위치를 다시 조준합니다. 흰 갑옷의 나이트 적은 멀리서 뛰어오고 가까워지면 걸어서 다가와 기본 공격을 합니다.">이 게임은 Canvas를 지원하는 브라우저에서 실행할 수 있습니다.</canvas>
+    <footer>
+      <div class="instructions">
+        <p>이동 WASD / 방향키 · 달리기 Shift · 앉기 Ctrl · 점프 Space · 슬라이딩 C · 연속 공격 좌클릭</p>
+        <p id="keyboard-status" role="status">Ctrl+W 보호: 전체화면 게임 버튼을 눌러 주세요.</p>
+      </div>
+      <p id="status" role="status">캐릭터 불러오는 중…</p>
+    </footer>
+  </main>
+  <script>
+    'use strict';
+
+    const canvas = document.querySelector('#game');
+    const ctx = canvas.getContext('2d');
+    const statusLabel = document.querySelector('#status');
+    const fullscreenButton = document.querySelector('#fullscreen');
+    const keyboardStatus = document.querySelector('#keyboard-status');
+    const keys = new Set();
+    // 화면 크기는 CSS 픽셀, 캔버스 해상도는 기기의 픽셀 밀도에 맞춥니다.
+    const view = { width: 960, height: 576, dpr: 1 };
+    // 캐릭터와 카메라는 화면 크기에 관계없는 월드 좌표를 사용합니다.
+    // BG.png의 바닥 외곽과 솟아 있는 돌난간의 발밑 선을 따로 지정합니다.
+    const mapScale = 2048 / 1600;
+    const mapPoint = (x, y) => ({ x: x * mapScale, y: y * mapScale });
+    const level = {
+      width: 2048, height: 2048,
+      spawn: mapPoint(885, 1160), enemySpawn: mapPoint(1080, 1160),
+      walkableAreas: [
+        // 성문 앞 테라스를 하나로 연결해 석판 위에 내부 경계가 생기지 않게 합니다.
+        [[411, 707], [772, 482], [902, 459], [1053, 553], [1026, 585], [933, 642], [852, 597], [777, 664], [559, 784], [459, 737]],
+        [[953, 552], [1040, 574], [1178, 724], [1097, 770]],
+        [[737, 630], [821, 592], [961, 774], [863, 820]],
+        // 중앙 테라스의 넓은 석판과 계단 입구를 실제 바닥 끝까지 연결합니다.
+        [[717, 862], [773, 815], [878, 763], [945, 737], [1012, 773], [1089, 710], [1215, 738], [1210, 777], [941, 963], [845, 922], [784, 931], [737, 902]],
+        [[1090, 730], [1272, 694], [1302, 731], [1165, 807]],
+        [[604, 1004], [747, 851], [833, 895], [697, 1056]],
+        // 시작 광장과 동쪽 성문 다리. 좁은 사각형 대신 보이는 바닥 윤곽을 사용합니다.
+        [[497, 1039], [638, 971], [689, 999], [769, 1036], [818, 1042], [879, 1084], [1050, 1138], [1110, 1114], [1202, 1157], [949, 1305], [906, 1272], [789, 1214], [662, 1144], [547, 1099]],
+        [[1027, 1124], [1391, 907], [1475, 954], [1471, 985], [1119, 1194]],
+        // 남쪽 갈림길과 두 돌다리의 난간 바깥쪽까지 바닥을 확보합니다.
+        [[620, 1398], [907, 1210], [1008, 1262], [1010, 1287], [711, 1473], [643, 1439]],
+        [[951, 1241], [1007, 1240], [1465, 1558], [1442, 1610], [1370, 1610], [920, 1291]]
+      ].map(polygon => polygon.map(([x, y]) => mapPoint(x, y))),
+      // 눈에 솟아 보이는 돌난간의 실제 발밑을 따라 놓은 두께 4픽셀의 벽입니다.
+      walls: [
+        [[429, 704], [550, 759], [749, 659]],
+        [[786, 506], [902, 486], [1018, 557]],
+        [[762, 665], [861, 804]], [[829, 644], [922, 772]],
+        [[1031, 591], [1136, 718]], [[984, 619], [1095, 756]],
+        [[802, 903], [940, 939], [1211, 777]],
+        [[755, 873], [640, 1001]], [[815, 912], [696, 1043]],
+        [[512, 1052], [631, 1113], [809, 1208], [890, 1250]],
+        [[702, 1022], [774, 1051], [823, 1067], [1034, 1153]],
+        [[1079, 1114], [1392, 930]], [[1150, 1157], [1453, 978]],
+        [[640, 1411], [904, 1243]], [[724, 1450], [972, 1293]],
+        [[959, 1290], [1360, 1575]], [[1033, 1280], [1445, 1568]]
+      ].flatMap(points => points.slice(1).map(([x, y], index) => ({
+        a: mapPoint(...points[index]), b: mapPoint(x, y), halfWidth: 2
+      }))),
+      waypoints: [
+        [510, 697], [640, 630], [775, 553], [862, 535], [970, 550],
+        [1020, 608], [1080, 682], [1114, 749], [1000, 792], [900, 848],
+        [819, 824], [902, 775], [846, 700], [798, 641],
+        [770, 900], [714, 962], [660, 1016], [742, 1080],
+        [885, 1160], [1045, 1169], [1148, 1101], [1270, 1030], [1404, 954],
+        [965, 1255], [866, 1320], [748, 1392], [693, 1418],
+        [1015, 1292], [1137, 1380], [1258, 1470], [1384, 1568], [674, 1069]
+      ].map(([x, y]) => mapPoint(x, y))
+    };
+    let collisionGeometry = null;
+    const player = { ...level.spawn, facing: 'S', animation: 'idle', animationTime: 0, moving: false, running: false, crouching: false, jumping: false, jumpTime: 0, jumpHeight: 0, jumpBufferTime: 0 };
+    const camera = { x: 0, y: 0 };
+    const slide = { active: false, time: 0, duration: 0, distance: 0, dx: 0, dy: 0, fromRun: false };
+    const attack = { active: false, time: 0, animation: 'attack', nextIndex: 0, queued: false, held: false, pointerId: null, resetTimer: null, hitChecked: false, target: null };
+    const enemy = {};
+    const enemies = [enemy];
+    const pendingStrikes = [];
+    const hitEffects = [];
+    const sprites = {};
+    const enemySprites = {};
+    const swordTrailFrames = [];
+    let ready = false;
+    let loadFailed = false;
+    let lastTime = null;
+    let lastStatus = '';
+    let keyboardProtection = 'off';
+    let fullscreenBusy = false;
+
+    const mapImage = new Image();
+    let mapReady = false;
+    let mapFailed = false;
+
+    function loadMap() {
+      return new Promise((resolve, reject) => {
+        mapImage.onload = () => {
+          if (mapImage.naturalWidth !== level.width || mapImage.naturalHeight !== level.height) {
+            mapFailed = true;
+            reject(new Error('BG.png 맵 이미지 크기를 확인해 주세요.'));
+            return;
+          }
+          mapReady = true;
+          resolve();
+        };
+        mapImage.onerror = () => {
+          mapFailed = true;
+          reject(new Error('BG.png 맵 이미지 로드 실패'));
+        };
+        mapImage.src = 'assets/BG.png';
+      });
+    }
+
+    // 7DeathKnight: 128×128 프레임 15개씩, 원본 Unity 메타데이터의 8방향 행 순서.
+    const character = { frameSize: 128, frameCount: 15, scale: 2, footX: 64, footY: 100 };
+    const enemyConfig = {
+      spawnX: level.enemySpawn.x, spawnY: level.enemySpawn.y,
+      walkSpeed: 95, runSpeed: 195,
+      runDistance: 338, walkDistance: 260,
+      attackRange: 72, attackDelay: 0.2, attackDuration: 0.7, attackCooldown: 0.45,
+      navigationRadius: 12, repathInterval: 0.25
+    };
+    const jumpPeakHeight = 48;
+    const jumpDuration = 0.625;
+    const jumpBufferDuration = 0.12;
+    const attackDuration = 0.6;
+    const deathDuration = 1.5;
+    const attackComboResetDelayMs = 1000;
+    const attackSequence = ['attack', 'attack2', 'attackSpin'];
+    const swordTrail = { frameSize: 256, frameCount: 15, width: 256, flattenY: 0.65 };
+    const combat = { maxHealth: 100, hitFlashDuration: 0.16, effectDuration: 0.32, bladeRadius: 4 };
+    // 0부터 세는 원본 프레임과 정면 칼날의 도달거리(원본 픽셀), E부터 시계 방향.
+    // 칼을 가장 앞으로 내미는 자세만 판정하며, 잔상과 보라색 광원은 사거리에 포함하지 않습니다.
+    // 회전 공격은 한 바퀴 돌아 정면으로 칼이 나오는 자세를 사용합니다.
+    const playerStrikes = {
+      attack: { damage: 20, poses: [
+        [6, 56], [6, 44], [6, 35], [6, 49],
+        [6, 56], [6, 48], [6, 45], [6, 52]
+      ] },
+      attack2: { damage: 25, poses: [
+        [7, 56], [7, 50], [7, 35], [7, 47],
+        [7, 56], [7, 52], [8, 45], [8, 52]
+      ] },
+      attackSpin: { damage: 30, poses: [
+        [9, 39], [9, 44], [9, 40], [9, 44],
+        [9, 41], [8, 36], [8, 39], [8, 35]
+      ] }
+    };
+    const enemyStrike = { damage: 15, poses: [
+      [6, 48], [7, 40], [7, 32], [6, 40],
+      [6, 48], [6, 40], [6, 32], [7, 40]
+    ] };
+    const slideProfiles = {
+      walk: { distance: 96, duration: 0.6 },
+      run: { distance: 192, duration: 0.8 }
+    };
+    const slideStartDuration = 0.16;
+    const slideEndDuration = 0.16;
+    const directions = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    const directionLabels = ['동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽', '북쪽', '북동쪽'];
+    const animations = {
+      idle: { src: 'assets/death-knight/Idle.png', fps: 10, label: '대기' },
+      walk: { src: 'assets/death-knight/Walk.png', fps: 12, label: '걷기' },
+      run: { src: 'assets/death-knight/Run.png', fps: 18, label: '달리기' },
+      crouchIdle: { src: 'assets/death-knight/CrouchIdle.png', fps: 10, label: '앉기' },
+      crouchWalk: { src: 'assets/death-knight/CrouchRun.png', fps: 10, label: '앉아 이동' },
+      jump: { src: 'assets/death-knight/FrontFlip.png', fps: character.frameCount / jumpDuration, label: '공중제비 점프', loop: false },
+      slideStart: { src: 'assets/death-knight/SlideStart.png', fps: character.frameCount / slideStartDuration, label: '슬라이딩', loop: false },
+      slide: { src: 'assets/death-knight/Slide.png', fps: 30, label: '슬라이딩' },
+      slideEnd: { src: 'assets/death-knight/SlideEnd.png', fps: character.frameCount / slideEndDuration, label: '슬라이딩', loop: false },
+      attack: { src: 'assets/death-knight/Melee.png', fps: character.frameCount / attackDuration, label: '기본 공격 1', loop: false },
+      attack2: { src: 'assets/death-knight/Melee2.png', fps: character.frameCount / attackDuration, label: '기본 공격 2', loop: false },
+      attackSpin: { src: 'assets/death-knight/MeleeSpin.png', fps: character.frameCount / attackDuration, label: '기본 공격 3', loop: false },
+      death: { src: 'assets/death-knight/Die.png', fps: character.frameCount / deathDuration, label: '쓰러짐', loop: false }
+    };
+
+    const enemyAnimations = {
+      idle: { src: 'assets/knight/Idle.png', fps: 10 },
+      walk: { src: 'assets/knight/Walk.png', fps: 12 },
+      run: { src: 'assets/knight/Run.png', fps: 18 },
+      attack: { src: 'assets/knight/Melee.png', fps: character.frameCount / enemyConfig.attackDuration, loop: false },
+      death: { src: 'assets/knight/Die.png', fps: character.frameCount / deathDuration, loop: false }
+    };
+    const enemyNavigationNodes = buildEnemyNavigationNodes();
+
+    function loadSpriteSet(definitions, target) {
+      return Promise.all(Object.entries(definitions).map(([name, animation]) => new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          if (image.naturalWidth !== character.frameSize * character.frameCount || image.naturalHeight !== character.frameSize * directions.length) {
+            reject(new Error('캐릭터 스프라이트 크기를 확인해 주세요: ' + animation.src));
+            return;
+          }
+          target[name] = image;
+          resolve();
+        };
+        image.onerror = () => reject(new Error('캐릭터 이미지 로드 실패: ' + animation.src));
+        image.src = animation.src;
+      })));
+    }
+
+    function loadSwordTrail() {
+      return Promise.all(Array.from({ length: swordTrail.frameCount }, (_, index) => new Promise((resolve, reject) => {
+        const image = new Image();
+        const src = 'assets/death-knight/sword-aoe/' + String(index * 2 + 1).padStart(4, '0') + '.png';
+        image.onload = () => {
+          if (image.naturalWidth !== swordTrail.frameSize || image.naturalHeight !== swordTrail.frameSize) {
+            reject(new Error('검 잔상 프레임 크기를 확인해 주세요: ' + src));
+            return;
+          }
+          swordTrailFrames[index] = image;
+          resolve();
+        };
+        image.onerror = () => reject(new Error('검 잔상 이미지 로드 실패: ' + src));
+        image.src = src;
+      })));
+    }
+
+    Promise.all([loadMap(), loadSpriteSet(animations, sprites), loadSpriteSet(enemyAnimations, enemySprites), loadSwordTrail()]).then(() => {
+      ready = true;
+    }).catch(error => {
+      loadFailed = true;
+      console.error(error);
+    });
+
+    function updateCamera(dt, snap = false) {
+      // 화면 중앙에서는 자유롭게 이동하고, 가장자리에 가까워지면 스크롤합니다.
+      const marginX = Math.min(240, view.width * 0.22);
+      const marginTop = Math.min(210, view.height * 0.26);
+      const marginBottom = Math.min(160, view.height * 0.22);
+      const screenX = player.x - camera.x;
+      const screenY = player.y - camera.y;
+      let targetX = camera.x, targetY = camera.y;
+      if (screenX < marginX) targetX = player.x - marginX;
+      if (screenX > view.width - marginX) targetX = player.x - (view.width - marginX);
+      if (screenY < marginTop) targetY = player.y - marginTop;
+      if (screenY > view.height - marginBottom) targetY = player.y - (view.height - marginBottom);
+      const follow = snap ? 1 : 1 - Math.exp(-12 * dt);
+      camera.x += (targetX - camera.x) * follow;
+      camera.y += (targetY - camera.y) * follow;
+      // 작은 화면에서는 맵 끝에서 멈추고, 맵보다 큰 화면에서는 가운데에 둡니다.
+      camera.x = view.width >= level.width ? (level.width - view.width) / 2 : Math.max(0, Math.min(level.width - view.width, camera.x));
+      camera.y = view.height >= level.height ? (level.height - view.height) / 2 : Math.max(0, Math.min(level.height - view.height, camera.y));
+    }
+
+    function resize() {
+      const oldWidth = view.width, oldHeight = view.height;
+      view.width = Math.max(1, canvas.clientWidth);
+      view.height = Math.max(1, canvas.clientHeight);
+      view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(view.width * view.dpr);
+      canvas.height = Math.round(view.height * view.dpr);
+      // 창 크기를 바꿔도 캐릭터의 월드 위치와 바닥 배율은 바뀌지 않습니다.
+      camera.x += (oldWidth - view.width) / 2;
+      camera.y += (oldHeight - view.height) / 2;
+      updateCamera(0, true);
+      lastTime = null;
+    }
+    window.addEventListener('resize', resize);
+
+    function reset() {
+      Object.assign(player, { ...level.spawn, facing: 'S', animation: 'idle', animationTime: 0, moving: false, running: false, crouching: false, jumping: false, jumpTime: 0, jumpHeight: 0, jumpBufferTime: 0 });
+      Object.assign(player, { health: combat.maxHealth, hitFlash: 0 });
+      pendingStrikes.length = 0;
+      hitEffects.length = 0;
+      Object.assign(slide, { active: false, time: 0, duration: 0, distance: 0, dx: 0, dy: 0, fromRun: false });
+      stopAttackInput();
+      clearTimeout(attack.resetTimer);
+      Object.assign(attack, { active: false, time: 0, animation: 'attack', nextIndex: 0, queued: false, held: false, pointerId: null, resetTimer: null, hitChecked: false, target: null });
+      resetEnemy();
+      camera.x = player.x - view.width / 2;
+      camera.y = player.y - (view.height / 2 + 42);
+      updateCamera(0, true);
+      keys.clear();
+      lastTime = null;
+    }
+
+    const movementKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
+    const crouchKeys = ['ControlLeft', 'ControlRight'];
+    const inputKeys = [...movementKeys, 'ShiftLeft', 'ShiftRight', 'KeyC', 'Space', ...crouchKeys];
+    window.addEventListener('keydown', event => {
+      const isCrouchKey = crouchKeys.includes(event.code);
+      if (!inputKeys.includes(event.code) || (event.ctrlKey && !isCrouchKey && !movementKeys.includes(event.code)) || event.metaKey || event.altKey || event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      if (player.health <= 0 || enemy.health <= 0) return;
+      // 길게 눌러도 반복하지 않으며, 동작 중에는 다른 동작으로 덮어쓰지 않습니다.
+      if (!event.repeat && !keys.has(event.code)) {
+        if (isCrouchKey && !player.jumping && !slide.active && !attack.active) player.crouching = !player.crouching;
+        if (event.code === 'Space') startJump();
+        if (event.code === 'KeyC') startSlide();
+      }
+      keys.add(event.code);
+    });
+    window.addEventListener('keyup', event => keys.delete(event.code));
+    window.addEventListener('blur', clearInput);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clearInput();
+      lastTime = null;
+    });
+    canvas.addEventListener('pointerdown', event => {
+      canvas.focus();
+      if (event.button !== 0 || !event.isPrimary) return;
+      event.preventDefault();
+      if (!ready || player.health <= 0 || !getNearestEnemy() || player.jumping || slide.active) return;
+      attack.held = true;
+      attack.pointerId = event.pointerId;
+      canvas.setPointerCapture(event.pointerId);
+      if (attack.active) attack.queued = true;
+      else startAttack();
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (event.pointerId !== attack.pointerId) return;
+      if (!(event.buttons & 1)) stopAttackInput();
+    });
+    window.addEventListener('pointerup', event => {
+      if (event.button !== 0 || event.pointerId !== attack.pointerId) return;
+      attack.held = false;
+      attack.pointerId = null;
+    });
+    window.addEventListener('pointercancel', event => {
+      if (event.pointerId === attack.pointerId) stopAttackInput();
+    });
+    canvas.addEventListener('lostpointercapture', event => {
+      if (event.pointerId === attack.pointerId && !canvas.hasPointerCapture(event.pointerId)) stopAttackInput();
+    });
+    document.querySelector('#restart').addEventListener('click', () => { reset(); canvas.focus(); });
+    fullscreenButton.addEventListener('click', toggleGameFullscreen);
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        navigator.keyboard?.unlock?.();
+        if (keyboardProtection === 'on' || keyboardProtection === 'starting') keyboardProtection = 'off';
+        clearInput();
+      }
+      updateFullscreenControls();
+    });
+    window.addEventListener('pagehide', () => navigator.keyboard?.unlock?.());
+
+    function updateFullscreenControls() {
+      const active = document.fullscreenElement === document.documentElement;
+      fullscreenButton.textContent = active ? '전체화면 종료' : '전체화면 게임';
+      fullscreenButton.setAttribute('aria-pressed', String(active));
+      fullscreenButton.disabled = fullscreenBusy;
+      const messages = {
+        off: 'Ctrl+W 보호: 전체화면 게임 버튼을 눌러 주세요.',
+        starting: '전체화면 게임 준비 중…',
+        on: 'Ctrl+W 보호 켜짐 · Esc로 전체화면 종료',
+        unsupported: '이 브라우저는 단축키 보호를 지원하지 않습니다. Ctrl을 눌렀다 떼고 이동해 주세요.',
+        failed: '단축키 보호를 켜지 못했습니다. 전체화면 게임 버튼을 다시 눌러 주세요.'
+      };
+      keyboardStatus.textContent = messages[keyboardProtection];
+    }
+
+    async function toggleGameFullscreen() {
+      if (fullscreenBusy) return;
+      clearInput();
+      if (typeof document.documentElement.requestFullscreen !== 'function' || !document.fullscreenEnabled || typeof navigator.keyboard?.lock !== 'function') {
+        keyboardProtection = 'unsupported';
+        updateFullscreenControls();
+        return;
+      }
+      fullscreenBusy = true;
+      updateFullscreenControls();
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+          return;
+        }
+        keyboardProtection = 'starting';
+        updateFullscreenControls();
+        await document.documentElement.requestFullscreen();
+        // WASD와 그 조합만 받아 Ctrl+W의 탭 닫기를 막고, Esc는 종료용으로 남겨 둡니다.
+        await navigator.keyboard.lock(['KeyW', 'KeyA', 'KeyS', 'KeyD']);
+        if (document.fullscreenElement !== document.documentElement) {
+          navigator.keyboard.unlock();
+          keyboardProtection = 'off';
+          return;
+        }
+        keyboardProtection = 'on';
+        canvas.focus({ preventScroll: true });
+      } catch (error) {
+        navigator.keyboard?.unlock?.();
+        keyboardProtection = 'failed';
+        // 보호가 실패하면 일반 화면으로 돌아와 보호 중인 것으로 오해하지 않도록 합니다.
+        if (document.fullscreenElement) {
+          try { await document.exitFullscreen(); } catch { /* 종료 버튼으로 다시 시도할 수 있습니다. */ }
+        }
+        console.warn('전체화면 게임 보호를 켜지 못했습니다.', error);
+      } finally {
+        fullscreenBusy = false;
+        updateFullscreenControls();
+      }
+    }
+
+    function clearInput() {
+      keys.clear();
+      player.jumpBufferTime = 0;
+      slide.active = false;
+      stopAttackInput();
+      if (attack.active) scheduleAttackComboReset();
+      attack.active = false;
+      attack.time = 0;
+      attack.target = null;
+    }
+
+    function stopAttackInput() {
+      const pointerId = attack.pointerId;
+      attack.pointerId = null;
+      attack.held = false;
+      attack.queued = false;
+      if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    }
+
+    function scheduleAttackComboReset() {
+      clearTimeout(attack.resetTimer);
+      // 마지막 공격 모션이 끝난 뒤부터 1초를 셉니다.
+      attack.resetTimer = window.setTimeout(() => {
+        attack.resetTimer = null;
+        if (!attack.active) attack.nextIndex = 0;
+      }, attackComboResetDelayMs);
+    }
+
+    function startJump() {
+      if (!ready || player.health <= 0 || enemy.health <= 0 || attack.active) return;
+      if (player.jumping || slide.active) {
+        // 착지나 슬라이딩 종료 직전에 누른 입력을 잠깐 기억해 다음 점프로 이어줍니다.
+        player.jumpBufferTime = jumpBufferDuration;
+        return;
+      }
+      player.jumpBufferTime = 0;
+      player.crouching = false;
+      player.jumping = true;
+      player.jumpTime = 0;
+      player.jumpHeight = 0;
+      player.animation = 'jump';
+      player.animationTime = 0;
+    }
+
+    function getMovementInput() {
+      const dx = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
+      const dy = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp'));
+      return { dx, dy, length: Math.hypot(dx, dy) };
+    }
+
+    function startSlide() {
+      if (!ready || player.health <= 0 || enemy.health <= 0 || slide.active || attack.active || player.jumping || player.crouching || !player.moving) return;
+      const { dx, dy, length } = getMovementInput();
+      if (!length) return;
+      // 시작 직전의 걷기·달리기 상태와 방향을 고정해, 도중에 키를 바꿔도 거리는 유지합니다.
+      const fromRun = player.running;
+      const profile = fromRun ? slideProfiles.run : slideProfiles.walk;
+      Object.assign(slide, { active: true, time: 0, duration: profile.duration, distance: profile.distance, dx: dx / length, dy: dy / length, fromRun });
+      player.jumpBufferTime = 0;
+      player.running = false;
+      player.facing = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+      player.animation = 'slideStart';
+      player.animationTime = 0;
+    }
+
+    function getNearestEnemy() {
+      let nearest = null, nearestDistanceSquared = Infinity;
+      for (const candidate of enemies) {
+        if (!(candidate.health > 0)) continue;
+        const distanceSquared = (candidate.x - player.x) ** 2 + (candidate.y - player.y) ** 2;
+        if (distanceSquared < nearestDistanceSquared) {
+          nearest = candidate;
+          nearestDistanceSquared = distanceSquared;
+        }
+      }
+      return nearest;
+    }
+
+    function startAttack() {
+      if (!ready || player.health <= 0 || attack.active || player.jumping || slide.active) return;
+      const target = getNearestEnemy();
+      if (!target) return;
+      clearTimeout(attack.resetTimer);
+      attack.resetTimer = null;
+      // 매 모션 시작 시 가장 가까운 적을 조준하고, 휘두르는 동안에는 방향을 고정합니다.
+      const dx = target.x - player.x, dy = target.y - player.y;
+      if (Math.hypot(dx, dy) > 0.001) {
+        player.facing = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+      }
+      attack.active = true;
+      attack.time = 0;
+      attack.hitChecked = false;
+      attack.target = target;
+      attack.animation = attackSequence[attack.nextIndex];
+      attack.nextIndex = (attack.nextIndex + 1) % attackSequence.length;
+      attack.queued = false;
+      player.crouching = false;
+      player.moving = false;
+      player.running = false;
+      player.jumpBufferTime = 0;
+      player.animation = attack.animation;
+      player.animationTime = 0;
+    }
+
+    function groundContains(point) {
+      return level.walkableAreas.some(polygon => pointInsidePolygon(point, polygon));
+    }
+
+    function closestOnSegment(point, a, b) {
+      const dx = b.x - a.x, dy = (b.y - a.y) * 1.5;
+      const lengthSquared = dx * dx + dy * dy;
+      const t = lengthSquared ? Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * 1.5 * dy) / lengthSquared)) : 0;
+      const x = a.x + dx * t, y = a.y + (b.y - a.y) * t;
+      return { x, y, distanceSquared: (point.x - x) ** 2 + ((point.y - y) * 1.5) ** 2 };
+    }
+
+    function getCollisionGeometry() {
+      if (collisionGeometry?.areas === level.walkableAreas && collisionGeometry.walls === level.walls) return collisionGeometry.segments;
+      const edges = level.walkableAreas.flatMap(polygon => polygon.map((a, index) => ({ a, b: polygon[(index + 1) % polygon.length] })));
+      const segments = [], seen = new Set();
+      const cross = (ax, ay, bx, by) => ax * by - ay * bx;
+      for (const edge of edges) {
+        const { a, b } = edge, dx = b.x - a.x, dy = b.y - a.y;
+        const lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 0.000001) continue;
+        const splits = [0, 1];
+        for (const other of edges) {
+          if (other === edge) continue;
+          const ex = other.b.x - other.a.x, ey = other.b.y - other.a.y;
+          const qx = other.a.x - a.x, qy = other.a.y - a.y, denominator = cross(dx, dy, ex, ey);
+          if (Math.abs(denominator) > 0.000001) {
+            const t = cross(qx, qy, ex, ey) / denominator, u = cross(qx, qy, dx, dy) / denominator;
+            if (t > 0 && t < 1 && u >= 0 && u <= 1) splits.push(t);
+          } else if (Math.abs(cross(qx, qy, dx, dy)) < 0.000001) {
+            for (const p of [other.a, other.b]) {
+              const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared;
+              if (t > 0 && t < 1) splits.push(t);
+            }
+          }
+        }
+        splits.sort((a, b) => a - b);
+        const length = Math.sqrt(lengthSquared), nx = -dy / length, ny = dx / length;
+        for (let index = 1; index < splits.length; index++) {
+          const start = splits[index - 1], end = splits[index];
+          if ((end - start) * length < 0.001) continue;
+          const t = (start + end) / 2, middle = { x: a.x + dx * t, y: a.y + dy * t };
+          const left = groundContains({ x: middle.x + nx * 0.05, y: middle.y + ny * 0.05 });
+          const right = groundContains({ x: middle.x - nx * 0.05, y: middle.y - ny * 0.05 });
+          // 겹치는 발판의 경계를 교차점에서 나눠 실제 바깥쪽 선만 남깁니다.
+          if (left === right) continue;
+          const first = { x: a.x + dx * start, y: a.y + dy * start }, last = { x: a.x + dx * end, y: a.y + dy * end };
+          const key = [first, last].map(p => p.x.toFixed(4) + ',' + p.y.toFixed(4)).sort().join(':');
+          if (!seen.has(key)) { segments.push({ a: first, b: last, halfWidth: 0, kind: 'edge' }); seen.add(key); }
+        }
+      }
+      for (const wall of level.walls || []) segments.push({ ...wall, kind: 'rail' });
+      collisionGeometry = { areas: level.walkableAreas, walls: level.walls, segments };
+      return segments;
+    }
+
+    function isWalkable(point, radius = 0) {
+      if (!groundContains(point)) return false;
+      return getCollisionGeometry().every(segment => closestOnSegment(point, segment.a, segment.b).distanceSquared >= (radius + segment.halfWidth) ** 2 - 0.00001);
+    }
+
+    function sweepSegment(actor, dx, dy, segment, radius) {
+      // 발밑 타원을 원으로 바꿔 이동 구간 전체와 얇은 벽의 충돌을 연속 판정합니다.
+      const px = actor.x, py = actor.y * 1.5, vx = dx, vy = dy * 1.5;
+      const ax = segment.a.x, ay = segment.a.y * 1.5, bx = segment.b.x, by = segment.b.y * 1.5;
+      const ex = bx - ax, ey = by - ay, length = Math.hypot(ex, ey), reach = radius + segment.halfWidth;
+      const speedSquared = vx * vx + vy * vy;
+      if (speedSquared < 0.0000000001 || length < 0.000001) return null;
+      let hit = null;
+      const consider = (time, nx, ny) => {
+        if (time < -0.000001 || time > 1 || vx * nx + vy * ny >= -0.00000001) return;
+        time = Math.max(0, time);
+        if (!hit || time < hit.time) hit = { time, nx, ny };
+      };
+      const tx = ex / length, ty = ey / length, nx = -ty, ny = tx;
+      const distance = (px - ax) * nx + (py - ay) * ny, normalSpeed = vx * nx + vy * ny;
+      if (Math.abs(normalSpeed) > 0.00000001) {
+        for (const side of [-1, 1]) {
+          const time = (side * reach - distance) / normalSpeed;
+          const along = (px + vx * time - ax) * tx + (py + vy * time - ay) * ty;
+          if (along >= 0 && along <= length) consider(time, nx * side, ny * side);
+        }
+      }
+      // 끝점도 둥글게 판정해 난간 끝에 걸리거나 얇은 벽을 관통하지 않습니다.
+      for (const [cx, cy] of [[ax, ay], [bx, by]]) {
+        const ox = px - cx, oy = py - cy, dot = ox * vx + oy * vy;
+        const determinant = dot * dot - speedSquared * (ox * ox + oy * oy - reach * reach);
+        if (determinant < 0) continue;
+        const time = (-dot - Math.sqrt(determinant)) / speedSquared;
+        const hx = px + vx * time - cx, hy = py + vy * time - cy, normalLength = Math.hypot(hx, hy);
+        if (normalLength > 0.000001) consider(time, hx / normalLength, hy / normalLength);
+      }
+      return hit;
+    }
+
+    function movePlayer(dx, dy) {
+      moveActor(player, dx, dy);
+    }
+
+    function moveActor(actor, dx, dy) {
+      const segments = getCollisionGeometry();
+      let remainingX = dx, remainingY = dy;
+      for (let contact = 0; contact < 6 && Math.hypot(remainingX, remainingY) > 0.00001; contact++) {
+        let earliest = 1, hits = [];
+        for (const segment of segments) {
+          const hit = sweepSegment(actor, remainingX, remainingY, segment, 10);
+          if (!hit) continue;
+          if (hit.time < earliest - 0.000001) { earliest = hit.time; hits = [hit]; }
+          else if (Math.abs(hit.time - earliest) <= 0.000001) hits.push(hit);
+        }
+        if (!hits.length) { actor.x += remainingX; actor.y += remainingY; break; }
+        const safeTime = Math.max(0, earliest - 0.001 / Math.hypot(remainingX, remainingY * 1.5));
+        actor.x += remainingX * safeTime;
+        actor.y += remainingY * safeTime;
+        remainingX *= 1 - safeTime;
+        remainingY *= 1 - safeTime;
+        for (const hit of hits) {
+          // 벽을 향하는 성분만 제거하고 벽을 따라 흐르는 속도는 남깁니다.
+          const length = Math.hypot(hit.nx, hit.ny * 1.5), nx = hit.nx / length, ny = hit.ny * 1.5 / length;
+          const intoWall = remainingX * nx + remainingY * ny;
+          if (intoWall < 0) { remainingX -= nx * intoWall; remainingY -= ny * intoWall; }
+        }
+      }
+    }
+
+    function resetEnemy() {
+      Object.assign(enemy, {
+        x: enemyConfig.spawnX, y: enemyConfig.spawnY, facing: 'W',
+        health: combat.maxHealth, hitFlash: 0, hitChecked: false,
+        animation: 'idle', animationTime: 0, moving: false, running: false,
+        attacking: false, attackTime: 0, inRangeTime: 0, cooldown: 0,
+        path: [], pathTimer: 0, pathTargetX: player.x, pathTargetY: player.y
+      });
+    }
+
+    function getTorso(actor) {
+      // 몸통만 타원으로 감쌉니다. 무기·방패·머리·발밑 그림자는 피격 범위가 아닙니다.
+      const sliding = actor === player && slide.active;
+      const centerY = sliding ? 84 : actor.crouching ? 79 : 69;
+      return {
+        x: actor.x, y: actor.y + (centerY - character.footY) * character.scale - (actor.jumpHeight || 0),
+        radiusX: (sliding ? 14 : 10) * character.scale,
+        radiusY: (sliding ? 8 : actor.crouching ? 10 : 14) * character.scale
+      };
+    }
+
+    function queueStrike(actor, target, state, profile, animation, time) {
+      const pose = profile.poses[directions.indexOf(actor.facing)];
+      if (state.hitChecked || time + 0.000000001 < pose[0] / animation.fps) return;
+      // 빗나가도 이번 공격의 판정은 끝납니다. 프레임을 건너뛰어도 타격 시점은 처리합니다.
+      state.hitChecked = true;
+      const angle = directions.indexOf(actor.facing) * Math.PI / 4;
+      const torso = getTorso(actor);
+      const point = distance => ({ x: torso.x + Math.cos(angle) * distance, y: torso.y + Math.sin(angle) * distance });
+      pendingStrikes.push({ actor, target, damage: profile.damage, base: point(12), tip: point(pose[1] * character.scale) });
+    }
+
+    function getStrikeContact(strike) {
+      if (!isEnemyPathClear(strike.actor, strike.target, 0)) return null;
+      const torso = getTorso(strike.target);
+      const padding = combat.bladeRadius * character.scale;
+      const radiusX = torso.radiusX + padding, radiusY = torso.radiusY + padding;
+      // 몸통 타원을 단위원으로 바꾼 뒤 칼날 선분과의 최근접점을 검사합니다.
+      const ax = (strike.base.x - torso.x) / radiusX, ay = (strike.base.y - torso.y) / radiusY;
+      const dx = (strike.tip.x - strike.base.x) / radiusX, dy = (strike.tip.y - strike.base.y) / radiusY;
+      const lengthSquared = dx * dx + dy * dy;
+      const t = lengthSquared ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lengthSquared)) : 0;
+      if ((ax + dx * t) ** 2 + (ay + dy * t) ** 2 > 1) return null;
+      return { x: strike.base.x + (strike.tip.x - strike.base.x) * t, y: strike.base.y + (strike.tip.y - strike.base.y) * t };
+    }
+
+    function resolveCombat() {
+      // 같은 프레임의 양쪽 공격을 먼저 판정해 동시 타격도 공평하게 적용합니다.
+      const hits = pendingStrikes.filter(strike => strike.actor.health > 0 && strike.target.health > 0)
+        .map(strike => ({ ...strike, contact: getStrikeContact(strike) })).filter(strike => strike.contact);
+      pendingStrikes.length = 0;
+      for (const hit of hits) {
+        hit.target.health = Math.max(0, hit.target.health - hit.damage);
+        hit.target.hitFlash = combat.hitFlashDuration;
+        spawnHitSparks(hit.contact);
+      }
+      if (player.health <= 0 || enemy.health <= 0) {
+        clearInput();
+        Object.assign(player, { jumping: false, jumpTime: 0, jumpHeight: 0, crouching: false });
+        clearTimeout(attack.resetTimer);
+        attack.resetTimer = null;
+        for (const actor of [player, enemy]) {
+          actor.moving = false;
+          actor.running = false;
+          const animation = actor.health <= 0 ? 'death' : 'idle';
+          if (actor.animation !== animation) {
+            actor.animation = animation;
+            actor.animationTime = 0;
+          }
+        }
+        enemy.attacking = false;
+      }
+    }
+
+    function spawnHitSparks(contact) {
+      // 타격 때 한 번만 흩뿌립니다. 그릴 때 난수를 다시 뽑지 않아 불똥 궤적이 이어집니다.
+      const particles = Array.from({ length: 14 }, (_, index) => {
+        const angle = index / 14 * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const speed = 150 + Math.random() * 180;
+        return {
+          vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 70,
+          life: 0.14 + Math.random() * 0.16, size: index % 4 === 0 ? 4 : 2
+        };
+      });
+      hitEffects.push({ x: contact.x, y: contact.y, time: 0, particles });
+    }
+
+    function orientation(a, b, c) {
+      return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    }
+
+    function pointInsidePolygon(point, polygon) {
+      // 오목한 테라스도 하나의 바닥으로 처리해 연결부에 틈이 생기지 않게 합니다.
+      let inside = false;
+      for (let i = 0, previous = polygon.length - 1; i < polygon.length; previous = i++) {
+        const a = polygon[previous], b = polygon[i];
+        if (Math.abs(orientation(a, b, point)) < 0.000001 && point.x >= Math.min(a.x, b.x) - 0.000001 && point.x <= Math.max(a.x, b.x) + 0.000001 && point.y >= Math.min(a.y, b.y) - 0.000001 && point.y <= Math.max(a.y, b.y) + 0.000001) return true;
+        if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      return inside;
+    }
+
+    function segmentDistanceSquared(a, b, c, d) {
+      const cross1 = orientation(a, b, c), cross2 = orientation(a, b, d);
+      const cross3 = orientation(c, d, a), cross4 = orientation(c, d, b);
+      if (cross1 * cross2 < 0 && cross3 * cross4 < 0) return 0;
+      return Math.min(closestOnSegment(a, c, d).distanceSquared, closestOnSegment(b, c, d).distanceSquared, closestOnSegment(c, a, b).distanceSquared, closestOnSegment(d, a, b).distanceSquared);
+    }
+
+    function isEnemyPathClear(start, end, radius = enemyConfig.navigationRadius) {
+      if (!isWalkable(start, radius) || !isWalkable(end, radius)) return false;
+      return getCollisionGeometry().every(segment => segmentDistanceSquared(start, end, segment.a, segment.b) > (radius + segment.halfWidth) ** 2 + 0.00001);
+    }
+
+    function buildEnemyNavigationNodes() {
+      // 계단 입구와 다리의 꺾이는 지점을 경유해 적도 같은 길을 따라옵니다.
+      return level.waypoints.filter(point => isWalkable(point, enemyConfig.navigationRadius));
+    }
+
+    function findEnemyPath(start, destination) {
+      if (isEnemyPathClear(start, destination)) return [{ x: destination.x, y: destination.y }];
+      const nodes = [{ x: start.x, y: start.y }, ...enemyNavigationNodes, { x: destination.x, y: destination.y }];
+      const costs = nodes.map(() => Infinity), previous = nodes.map(() => -1), visited = new Set();
+      costs[0] = 0;
+      for (let iteration = 0; iteration < nodes.length; iteration++) {
+        let current = -1;
+        for (let i = 0; i < nodes.length; i++) {
+          if (!visited.has(i) && (current < 0 || costs[i] < costs[current])) current = i;
+        }
+        if (current < 0 || !Number.isFinite(costs[current])) break;
+        if (current === nodes.length - 1) {
+          const path = [];
+          for (let index = current; index > 0; index = previous[index]) path.unshift(nodes[index]);
+          return path;
+        }
+        visited.add(current);
+        for (let next = 1; next < nodes.length; next++) {
+          if (visited.has(next)) continue;
+          const cost = costs[current] + Math.hypot(nodes[next].x - nodes[current].x, nodes[next].y - nodes[current].y);
+          if (cost < costs[next] && isEnemyPathClear(nodes[current], nodes[next])) {
+            costs[next] = cost;
+            previous[next] = current;
+          }
+        }
+      }
+      return [];
+    }
+
+    function setEnemyAnimation(name, dt) {
+      enemy.animationTime = enemy.animation === name ? enemy.animationTime + dt : 0;
+      enemy.animation = name;
+    }
+
+    function updateEnemy(dt) {
+      enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+      enemy.pathTimer = Math.max(0, enemy.pathTimer - dt);
+      const dx = player.x - enemy.x, dy = player.y - enemy.y;
+      const distance = Math.hypot(dx, dy);
+      const inAttackRange = distance <= enemyConfig.attackRange && isEnemyPathClear(enemy, player, 0);
+      // 공격 범위에 연속으로 머문 시간을 세고, 벗어나거나 벽에 가려지면 다시 준비합니다.
+      enemy.inRangeTime = inAttackRange ? Math.min(enemyConfig.attackDelay, enemy.inRangeTime + dt) : 0;
+      if (enemy.attacking) {
+        enemy.attackTime = Math.min(enemyConfig.attackDuration, enemy.attackTime + dt);
+        enemy.animationTime = enemy.attackTime;
+        queueStrike(enemy, player, enemy, enemyStrike, enemyAnimations.attack, enemy.attackTime);
+        if (enemy.attackTime >= enemyConfig.attackDuration) {
+          enemy.attacking = false;
+          enemy.attackTime = 0;
+          enemy.hitChecked = false;
+          enemy.cooldown = enemyConfig.attackCooldown;
+          setEnemyAnimation('idle', 0);
+        }
+        return;
+      }
+      enemy.moving = false;
+      if (inAttackRange) {
+        enemy.running = false;
+        enemy.path = [];
+        if (distance > 0.001) enemy.facing = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+        if (enemy.cooldown <= 0 && enemy.inRangeTime + 0.000000001 >= enemyConfig.attackDelay) {
+          enemy.attacking = true;
+          enemy.attackTime = 0;
+          enemy.hitChecked = false;
+          setEnemyAnimation('attack', 0);
+        } else setEnemyAnimation('idle', dt);
+        return;
+      }
+      // 달리기 시작과 걷기 전환 거리를 다르게 둬 경계에서 모션이 흔들리지 않게 합니다.
+      if (distance >= enemyConfig.runDistance) enemy.running = true;
+      else if (distance <= enemyConfig.walkDistance) enemy.running = false;
+      let waypoint;
+      const direct = isEnemyPathClear(enemy, player);
+      if (direct) {
+        enemy.path = [];
+        waypoint = player;
+      } else {
+        if (!enemy.path.length || enemy.pathTimer <= 0 || Math.hypot(player.x - enemy.pathTargetX, player.y - enemy.pathTargetY) > 24) {
+          enemy.path = findEnemyPath(enemy, player);
+          enemy.pathTimer = enemyConfig.repathInterval;
+          enemy.pathTargetX = player.x;
+          enemy.pathTargetY = player.y;
+        }
+        while (enemy.path.length && Math.hypot(enemy.path[0].x - enemy.x, enemy.path[0].y - enemy.y) < 2) enemy.path.shift();
+        waypoint = enemy.path[0];
+      }
+      if (!waypoint) { setEnemyAnimation('idle', dt); return; }
+      const targetX = waypoint.x - enemy.x, targetY = waypoint.y - enemy.y;
+      const targetDistance = Math.hypot(targetX, targetY);
+      if (targetDistance < 0.001) { setEnemyAnimation('idle', dt); return; }
+      const speed = enemy.running ? enemyConfig.runSpeed : enemyConfig.walkSpeed;
+      const travel = Math.min(speed * dt, targetDistance, direct ? Math.max(0, distance - enemyConfig.attackRange + 0.5) : Infinity);
+      const oldX = enemy.x, oldY = enemy.y;
+      moveActor(enemy, targetX / targetDistance * travel, targetY / targetDistance * travel);
+      enemy.moving = Math.hypot(enemy.x - oldX, enemy.y - oldY) > 0.0001;
+      if (enemy.moving) {
+        enemy.facing = directions[(Math.round(Math.atan2(enemy.y - oldY, enemy.x - oldX) / (Math.PI / 4)) + 8) % 8];
+        setEnemyAnimation(enemy.running ? 'run' : 'walk', dt);
+      } else {
+        enemy.path = [];
+        enemy.pathTimer = 0;
+        setEnemyAnimation('idle', dt);
+      }
+    }
+
+    function update(dt) {
+      if (!ready) return;
+      for (const actor of [player, enemy]) actor.hitFlash = Math.max(0, actor.hitFlash - dt);
+      for (let index = hitEffects.length - 1; index >= 0; index--) {
+        hitEffects[index].time += dt;
+        if (hitEffects[index].time >= combat.effectDuration) hitEffects.splice(index, 1);
+      }
+      if (player.health > 0 && enemy.health > 0) {
+        updatePlayer(dt);
+        updateEnemy(dt);
+        resolveCombat();
+      } else {
+        // 전투가 끝나도 사망 모션은 끝까지 재생하고, 쓰러진 마지막 프레임을 유지합니다.
+        for (const actor of [player, enemy]) {
+          if (actor.animation === 'death') actor.animationTime = Math.min(deathDuration, actor.animationTime + dt);
+        }
+      }
+    }
+
+    function updatePlayer(dt) {
+      if (!ready) return;
+      player.jumpBufferTime = Math.max(0, player.jumpBufferTime - dt);
+      if (attack.active) {
+        attack.time += dt;
+        queueStrike(player, attack.target, attack, playerStrikes[attack.animation], animations[attack.animation], attack.time);
+        while (attack.active && attack.time >= attackDuration) {
+          const remainingTime = attack.time - attackDuration;
+          const continueAttack = attack.held || attack.queued;
+          attack.active = false;
+          attack.time = 0;
+          attack.target = null;
+          if (continueAttack) {
+            startAttack();
+            if (!attack.active) break;
+            // 다음 모션에 남은 시간을 넘겨 연속 공격 사이에 빈 프레임이 생기지 않게 합니다.
+            attack.time = remainingTime;
+            queueStrike(player, attack.target, attack, playerStrikes[attack.animation], animations[attack.animation], attack.time);
+          } else {
+            scheduleAttackComboReset();
+          }
+        }
+        if (attack.active) {
+          player.moving = false;
+          player.running = false;
+          player.animation = attack.animation;
+          player.animationTime = attack.time;
+          updateCamera(dt);
+          return;
+        }
+      }
+      if (player.jumping) {
+        player.jumpTime = Math.min(jumpDuration, player.jumpTime + dt);
+        const progress = player.jumpTime / jumpDuration;
+        // 지상 좌표와 별개인 포물선 높이로 상승·하강하며, 착지 때 정확히 0으로 맞춥니다.
+        player.jumpHeight = 4 * jumpPeakHeight * progress * (1 - progress);
+        if (progress >= 1) {
+          player.jumping = false;
+          player.jumpTime = 0;
+          player.jumpHeight = 0;
+        }
+      }
+      const { dx, dy, length } = getMovementInput();
+      const wantsRun = !player.crouching && length > 0 && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
+      if (slide.active) {
+        const before = slide.time / slide.duration;
+        slide.time = Math.min(slide.duration, slide.time + dt);
+        const after = slide.time / slide.duration;
+        // 감속 곡선의 차이만큼 이동해 프레임 수와 관계없이 정해진 거리를 미끄러집니다.
+        const distance = slide.distance * ((2 * after - after * after) - (2 * before - before * before));
+        movePlayer(slide.dx * distance, slide.dy * distance);
+        if (slide.time >= slide.duration) slide.active = false;
+      } else if (length) {
+        const speed = player.crouching ? 80 : wantsRun ? 270 : 155;
+        movePlayer(dx / length * speed * dt, dy / length * speed * dt);
+        // 화면의 y는 아래쪽으로 증가하므로 스프라이트 행도 시계 방향으로 선택합니다.
+        player.facing = directions[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+      }
+      // 착지나 슬라이딩이 끝난 프레임에 예약한 점프를 바로 시작합니다.
+      if (!player.jumping && !slide.active && player.jumpBufferTime > 0) startJump();
+      // 벽이 위치 이동을 막아도 입력, 발걸음과 동작 타이머는 계속 살아 있습니다.
+      player.moving = slide.active || length > 0;
+      player.running = !slide.active && player.moving && wantsRun;
+      if (slide.active) {
+        if (slide.time < slideStartDuration) {
+          player.animation = 'slideStart';
+          player.animationTime = slide.time;
+        } else if (slide.time < slide.duration - slideEndDuration) {
+          player.animation = 'slide';
+          player.animationTime = slide.time - slideStartDuration;
+        } else {
+          player.animation = 'slideEnd';
+          player.animationTime = slide.time - (slide.duration - slideEndDuration);
+        }
+      } else {
+        const animation = player.jumping ? 'jump' : player.crouching
+          ? (player.moving ? 'crouchWalk' : 'crouchIdle')
+          : player.moving ? (player.running ? 'run' : 'walk') : 'idle';
+        // 동작이 바뀔 때만 처음부터 재생하고, 방향을 틀 때는 발걸음을 이어갑니다.
+        player.animationTime = player.jumping ? player.jumpTime : animation === player.animation ? player.animationTime + dt : 0;
+        player.animation = animation;
+      }
+      updateCamera(dt);
+    }
+
+    function drawSwordTrail(front) {
+      if (!ready || !attack.active || player.health <= 0) return;
+      const row = directions.indexOf(player.facing);
+      const impactTime = playerStrikes[attack.animation].poses[row][0] / animations[attack.animation].fps;
+      const spin = attack.animation === 'attackSpin';
+      const start = impactTime - (spin ? 0.06 : 0.08);
+      const end = Math.min(attackDuration - 0.01, impactTime + (spin ? 0.24 : 0.2));
+      if (attack.time < start || attack.time >= end) return;
+      const progress = (attack.time - start) / (end - start);
+      const frame = spin ? Math.min(swordTrail.frameCount - 1, Math.floor(progress * swordTrail.frameCount)) : 1 + Math.min(6, Math.floor(progress * 7));
+      if (!swordTrailFrames[frame]) return;
+      const fade = Math.min(1, (attack.time - start) / 0.03, (end - attack.time) / 0.08);
+      const facing = row * Math.PI / 4;
+      const angle = Math.atan2(Math.sin(facing) / swordTrail.flattenY, Math.cos(facing));
+      const clockwise = attack.animation !== 'attack2';
+      const size = swordTrail.width;
+      const torso = getTorso(player);
+      ctx.save();
+      ctx.translate(Math.round(torso.x - camera.x), Math.round(torso.y - camera.y));
+      // 뒤쪽 잔상 → 캐릭터 → 앞쪽 잔상 순서로 그려 몸통을 가리지 않습니다.
+      ctx.beginPath();
+      ctx.rect(-size, front ? 0 : -size, size * 2, size);
+      ctx.clip();
+      ctx.scale(1, swordTrail.flattenY);
+      ctx.rotate(angle);
+      if (!spin) {
+        // 일반 공격의 잔상은 정면 부채꼴에 맞추고, 회전 공격은 한 바퀴 전부 사용합니다.
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, size, -Math.PI * 0.46, Math.PI * 0.46);
+        ctx.closePath();
+        ctx.clip();
+      }
+      ctx.rotate(clockwise ? -Math.PI / 2 : Math.PI / 2);
+      ctx.scale(1, clockwise ? -1 : 1);
+      // 원본 VFX의 검은 부분은 밝은 합성에서 사라지고 보라색 잔상만 남습니다.
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = fade * (spin ? 0.6 : 0.7);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(swordTrailFrames[frame], -size / 2, -size / 2, size, size);
+      ctx.restore();
+    }
+
+    function drawActor(actor, spriteSet, animationSet) {
+      const screenX = actor.x - camera.x;
+      const screenY = actor.y - camera.y;
+
+      if (ready) {
+        if (actor === player) drawSwordTrail(false);
+        const name = actor.animation;
+        const frameIndex = Math.floor(actor.animationTime * animationSet[name].fps);
+        const frame = animationSet[name].loop === false
+          ? Math.min(frameIndex, character.frameCount - 1)
+          : frameIndex % character.frameCount;
+        const row = directions.indexOf(actor.facing);
+        const size = character.frameSize;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        if (actor.health > 0 && actor.hitFlash > 0) ctx.filter = 'brightness(2.4) saturate(0.4)';
+        // 모든 동작의 발 위치를 맞추고, 방향마다 원본 그림을 그대로 사용합니다.
+        ctx.drawImage(spriteSet[name], frame * size, row * size, size, size,
+          Math.round(screenX - character.footX * character.scale),
+          Math.round(screenY - (actor.jumpHeight || 0) - character.footY * character.scale),
+          size * character.scale, size * character.scale);
+        ctx.restore();
+        if (actor === player) drawSwordTrail(true);
+      }
+    }
+
+    function drawHealthBar(actor, color) {
+      if (!ready || actor.health <= 0 || actor.health >= combat.maxHealth) return;
+      const x = Math.round(actor.x - camera.x), y = Math.round(actor.y - camera.y - (actor.jumpHeight || 0) - 130);
+      const width = 64, height = 3;
+      ctx.save();
+      ctx.fillStyle = '#171823e6';
+      ctx.fillRect(x - width / 2 - 1, y - 1, width + 2, height + 2);
+      ctx.fillStyle = '#4d3946';
+      ctx.fillRect(x - width / 2, y, width, height);
+      ctx.fillStyle = color;
+      ctx.fillRect(x - width / 2, y, width * actor.health / combat.maxHealth, height);
+      ctx.restore();
+    }
+
+    function drawHitEffects() {
+      for (const effect of hitEffects) {
+        ctx.save();
+        // 2픽셀 격자의 사각형만 사용해 불똥과 잔상 끝까지 픽셀 모양을 유지합니다.
+        const snap = value => Math.round(value / 2) * 2;
+        for (const particle of effect.particles) {
+          const age = effect.time / particle.life;
+          if (age >= 1) continue;
+          ctx.globalAlpha = age < 0.75 ? 1 : 0.5;
+          for (let trail = 2; trail >= 0; trail--) {
+            const time = Math.max(0, effect.time - trail * 0.012);
+            const travel = (1 - Math.exp(-7 * time)) / 7;
+            const x = effect.x - camera.x + particle.vx * travel;
+            const y = effect.y - camera.y + particle.vy * travel + 210 * time * time;
+            const size = trail === 0 && age < 0.55 ? particle.size : 2;
+            ctx.fillStyle = trail > 0 || age > 0.7 ? '#e99b12' : age < 0.2 ? '#fff8b0' : '#ffda32';
+            ctx.fillRect(snap(x - size / 2), snap(y - size / 2), size, size);
+          }
+        }
+        if (effect.time < 0.055) {
+          const x = snap(effect.x - camera.x), y = snap(effect.y - camera.y);
+          ctx.globalAlpha = effect.time < 0.025 ? 1 : 0.6;
+          ctx.fillStyle = '#ffd42a';
+          ctx.fillRect(x - 6, y - 2, 12, 4);
+          ctx.fillRect(x - 2, y - 6, 4, 12);
+          ctx.fillStyle = '#fff8b0';
+          ctx.fillRect(x - 2, y - 2, 4, 4);
+        }
+        ctx.restore();
+      }
+    }
+
+    function draw() {
+      ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+      ctx.fillStyle = '#06151e';
+      ctx.fillRect(0, 0, view.width, view.height);
+      if (mapReady) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(mapImage, -camera.x, -camera.y, level.width, level.height);
+        ctx.restore();
+      }
+      const actors = [player, enemy].sort((a, b) => a.y - b.y);
+      for (const actor of actors) {
+        if (actor === enemy) drawActor(enemy, enemySprites, enemyAnimations);
+        else drawActor(player, sprites, animations);
+      }
+
+      drawHealthBar(player, '#b3a0ff');
+      drawHealthBar(enemy, '#b91c1c');
+      drawHitEffects();
+
+      const movementStatus = mapFailed ? '맵을 불러오지 못했습니다. assets/BG.png를 확인해 주세요.' : loadFailed ? '캐릭터를 불러오지 못했습니다. assets 폴더를 확인해 주세요.' : !ready ? '캐릭터 불러오는 중…' : animations[player.animation].label + ' · ' + directionLabels[directions.indexOf(player.facing)];
+      const result = !ready ? '' : player.health <= 0 && enemy.health <= 0 ? '무승부 · 위치 초기화로 다시 시작' : player.health <= 0 ? '패배 · 위치 초기화로 다시 시작' : enemy.health <= 0 ? '승리 · 위치 초기화로 다시 시작' : '';
+      const status = result || movementStatus;
+      if (status !== lastStatus) { statusLabel.textContent = status; lastStatus = status; }
+    }
+
+    function frame(time) {
+      const dt = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, 0.033);
+      lastTime = time;
+      update(dt);
+      draw();
+      requestAnimationFrame(frame);
+    }
+    resize();
+    reset();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
