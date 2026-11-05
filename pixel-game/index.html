@@ -14,78 +14,71 @@
       background: url("assets/Gradient.png") center / 100% 100% no-repeat;
       opacity: 0.32;
     }
-    header { position: absolute; z-index: 1; inset: 20px 20px auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
-    .title-panel { padding: 12px 16px; border: 1px solid #ffffff20; border-radius: 8px; background: #171823d9; }
+    header { position: absolute; z-index: 1; inset: 20px 20px auto; display: flex; align-items: flex-start; justify-content: flex-end; pointer-events: none; }
     .header-actions { display: flex; justify-content: flex-end; gap: 8px; }
-    h1 { margin: 5px 0 0; font-size: 22px; word-break: keep-all; }
-    .tag { color: #b3a0ff; font-size: 11px; letter-spacing: 2px; }
-    p { margin: 0; color: #e3dfed; font-size: 13px; line-height: 1.8; }
     canvas { display: block; width: 100%; height: 100%; background: #06151e; touch-action: none; }
     canvas:focus-visible { outline: 3px solid #b3a0ff; outline-offset: -3px; }
     :fullscreen #game { outline: none; }
     button:focus-visible { outline: 3px solid #b3a0ff; outline-offset: 4px; }
     button { padding: 10px 16px; border: 1px solid #686184; border-radius: 6px; background: #302c47ed; color: #fff; font: inherit; cursor: pointer; pointer-events: auto; }
     button:disabled { opacity: 0.6; cursor: wait; }
-    footer { position: absolute; z-index: 1; inset: auto 20px 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; pointer-events: none; }
-    footer p { padding: 8px 12px; border: 1px solid #ffffff20; border-radius: 6px; background: #171823d9; }
-    .instructions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
-    .instructions p { max-width: 100%; }
-    #keyboard-status { color: #cfc2ff; }
-    #status { color: #d1bf92; flex-shrink: 0; white-space: nowrap; }
-    @media (max-width: 540px) { header { inset: 12px 12px auto; gap: 8px; } .header-actions { flex-direction: column; flex-shrink: 0; } footer { inset: auto 12px 12px; } .tag { font-size: 9px; letter-spacing: 1px; } h1 { font-size: 18px; } button { padding: 9px 11px; font-size: 12px; } footer p { font-size: 11px; } }
+    .player-health-hud { position: absolute; z-index: 1; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: min(656px, calc(100% - 40px)); transform: translateX(-50%); background: transparent; pointer-events: none; }
+    #player-health-bar { width: 100%; height: auto; aspect-ratio: 656 / 46; background: transparent; image-rendering: pixelated; }
+    .player-health-hud[data-hit="true"] #player-health-bar { filter: brightness(1.7); }
+    @media (max-width: 540px) { header { inset: 12px 12px auto; } .header-actions { flex-direction: column; } button { padding: 9px 11px; font-size: 12px; } .player-health-hud { width: calc(100% - 24px); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); } }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <div class="title-panel"><span class="tag">RUINS / EXPLORATION</span><h1>Death Knight · 유적 맵</h1></div>
       <div class="header-actions">
-        <button id="fullscreen" type="button" aria-pressed="false" aria-describedby="keyboard-status">전체화면 게임</button>
+        <button id="fullscreen" type="button" aria-pressed="false">전체화면 게임</button>
         <button id="restart" type="button">위치 초기화</button>
       </div>
     </header>
     <canvas id="game" width="960" height="576" tabindex="0" aria-label="데스 나이트 액션 연습장. WASD 또는 방향키로 8방향 이동하고 Shift를 누르면 달립니다. Ctrl키로 앉거나 일어나며, 앉은 상태에서는 천천히 이동합니다. 스페이스바로 공중제비 점프를 합니다. 걷거나 달리는 중 C키로 슬라이딩하며, 달리다가 사용하면 더 멀리 이동합니다. 마우스 왼쪽 클릭으로 가장 가까운 적을 향해 자동으로 방향을 잡아 공격하며, 누르고 있으면 세 가지 공격 모션을 순서대로 반복합니다. 매 공격 시작 시 적의 현재 위치를 다시 조준합니다. 흰 갑옷의 나이트 적은 멀리서 뛰어오고 가까워지면 걸어서 다가와 기본 공격을 합니다.">이 게임은 Canvas를 지원하는 브라우저에서 실행할 수 있습니다.</canvas>
-    <footer>
-      <div class="instructions">
-        <p>이동 WASD / 방향키 · 달리기 Shift · 앉기 Ctrl · 점프 Space · 슬라이딩 C · 연속 공격 좌클릭</p>
-        <p id="keyboard-status" role="status">Ctrl+W 보호: 전체화면 게임 버튼을 눌러 주세요.</p>
-      </div>
-      <p id="status" role="status">캐릭터 불러오는 중…</p>
-    </footer>
+    <div id="player-health-hud" class="player-health-hud" data-state="normal" data-hit="false">
+      <canvas id="player-health-bar" width="656" height="46" role="progressbar" aria-label="플레이어 체력" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-valuetext="100 / 100">플레이어 체력</canvas>
+    </div>
   </main>
   <script>
     'use strict';
 
     const canvas = document.querySelector('#game');
     const ctx = canvas.getContext('2d');
-    const statusLabel = document.querySelector('#status');
     const fullscreenButton = document.querySelector('#fullscreen');
-    const keyboardStatus = document.querySelector('#keyboard-status');
+    const playerHealthHud = document.querySelector('#player-health-hud');
+    const playerHealthBar = document.querySelector('#player-health-bar');
+    const playerHealthCtx = playerHealthBar.getContext('2d');
     const keys = new Set();
     // 화면 크기는 CSS 픽셀, 캔버스 해상도는 기기의 픽셀 밀도에 맞춥니다.
     const view = { width: 960, height: 576, dpr: 1 };
     // 캐릭터와 카메라는 화면 크기에 관계없는 월드 좌표를 사용합니다.
     // BG.png의 바닥 외곽과 솟아 있는 돌난간의 발밑 선을 따로 지정합니다.
-    const mapScale = 2048 / 1600;
+    // 원본 이미지는 유지하고 맵의 가로·세로를 25% 넓혀 캐릭터와의 크기 비율을 맞춥니다.
+    const mapImageSize = 2048;
+    const mapWorldSize = mapImageSize * 1.25;
+    const mapScale = mapWorldSize / 1600;
     const mapPoint = (x, y) => ({ x: x * mapScale, y: y * mapScale });
     const level = {
-      width: 2048, height: 2048,
+      width: mapWorldSize, height: mapWorldSize,
       spawn: mapPoint(885, 1160), enemySpawn: mapPoint(1080, 1160),
       walkableAreas: [
-        // 성문 앞 테라스를 하나로 연결해 석판 위에 내부 경계가 생기지 않게 합니다.
-        [[411, 707], [772, 482], [902, 459], [1053, 553], [1026, 585], [933, 642], [852, 597], [777, 664], [559, 784], [459, 737]],
-        [[953, 552], [1040, 574], [1178, 724], [1097, 770]],
-        [[737, 630], [821, 592], [961, 774], [863, 820]],
-        // 중앙 테라스의 넓은 석판과 계단 입구를 실제 바닥 끝까지 연결합니다.
-        [[717, 862], [773, 815], [878, 763], [945, 737], [1012, 773], [1089, 710], [1215, 738], [1210, 777], [941, 963], [845, 922], [784, 931], [737, 902]],
-        [[1090, 730], [1272, 694], [1302, 731], [1165, 807]],
-        [[604, 1004], [747, 851], [833, 895], [697, 1056]],
-        // 시작 광장과 동쪽 성문 다리. 좁은 사각형 대신 보이는 바닥 윤곽을 사용합니다.
-        [[497, 1039], [638, 971], [689, 999], [769, 1036], [818, 1042], [879, 1084], [1050, 1138], [1110, 1114], [1202, 1157], [949, 1305], [906, 1272], [789, 1214], [662, 1144], [547, 1099]],
-        [[1027, 1124], [1391, 907], [1475, 954], [1471, 985], [1119, 1194]],
-        // 남쪽 갈림길과 두 돌다리의 난간 바깥쪽까지 바닥을 확보합니다.
-        [[620, 1398], [907, 1210], [1008, 1262], [1010, 1287], [711, 1473], [643, 1439]],
-        [[951, 1241], [1007, 1240], [1465, 1558], [1442, 1610], [1370, 1610], [920, 1291]]
+        // 성문 앞 바닥을 따라 돌출부를 나누고 난간 바깥 턱과 수직 벽면은 제외합니다.
+        [[429, 704], [535, 638], [651, 566], [724, 521], [772, 490], [786, 506], [902, 486], [1018, 557], [1024, 580], [986, 606], [933, 642], [852, 597], [819, 627], [777, 664], [749, 659], [550, 759]],
+        // 위쪽 두 계단의 바닥은 양쪽 돌난간의 발밑 선 안쪽으로 제한합니다.
+        [[947, 568], [1002, 549], [1168, 752], [1112, 776]],
+        [[742, 638], [800, 604], [936, 792], [878, 832]],
+        // 중앙 테라스 앞쪽의 수직 석벽을 제거하고 계단 입구에서만 바닥을 연결합니다.
+        [[717, 862], [773, 815], [878, 763], [945, 737], [1012, 773], [1089, 710], [1215, 738], [1211, 777], [940, 939], [802, 903], [781, 905], [758, 887], [737, 884]],
+        [[1102, 735], [1247, 703], [1272, 694], [1286, 709], [1291, 729], [1271, 743], [1165, 807]],
+        [[755, 873], [815, 912], [696, 1043], [640, 1001]],
+        // 시작 광장과 성문 다리의 모서리를 난간 발밑과 실제 석판 끝에 맞춥니다.
+        [[512, 1052], [622, 985], [643, 980], [680, 1001], [696, 1022], [774, 1051], [823, 1067], [1034, 1153], [1079, 1114], [1110, 1114], [1170, 1158], [1118, 1191], [1026, 1243], [1008, 1264], [972, 1293], [959, 1290], [904, 1243], [890, 1250], [809, 1208], [631, 1113]],
+        [[1045, 1134], [1079, 1114], [1392, 930], [1412, 925], [1458, 951], [1453, 978], [1150, 1157], [1119, 1185]],
+        // 남쪽 계단의 마지막 단과 동남쪽 다리 끝을 닫아 석벽이나 이미지 밖으로 나가지 못하게 합니다.
+        [[640, 1411], [904, 1243], [972, 1293], [724, 1450]],
+        [[972, 1255], [1015, 1255], [1033, 1280], [1445, 1568], [1452, 1582], [1430, 1594], [1393, 1594], [1360, 1575], [959, 1290]]
       ].map(polygon => polygon.map(([x, y]) => mapPoint(x, y))),
       // 눈에 솟아 보이는 돌난간의 실제 발밑을 따라 놓은 두께 4픽셀의 벽입니다.
       walls: [
@@ -126,21 +119,29 @@
     const enemySprites = {};
     const swordTrailFrames = [];
     let ready = false;
-    let loadFailed = false;
     let lastTime = null;
-    let lastStatus = '';
     let keyboardProtection = 'off';
     let fullscreenBusy = false;
+    let lastHudHealth = null;
+    let lastHudHit = null;
+
+    const healthBarImage = new Image();
+    let healthBarReady = false;
+    function loadHealthBar() {
+      return new Promise((resolve, reject) => {
+        healthBarImage.onload = () => { healthBarReady = true; updatePlayerHealthHud(true); resolve(); };
+        healthBarImage.onerror = () => reject(new Error('체력바 이미지 로드 실패'));
+        healthBarImage.src = 'assets/ui/health-bar-red-transparent.png';
+      });
+    }
 
     const mapImage = new Image();
     let mapReady = false;
-    let mapFailed = false;
 
     function loadMap() {
       return new Promise((resolve, reject) => {
         mapImage.onload = () => {
-          if (mapImage.naturalWidth !== level.width || mapImage.naturalHeight !== level.height) {
-            mapFailed = true;
+          if (mapImage.naturalWidth !== mapImageSize || mapImage.naturalHeight !== mapImageSize) {
             reject(new Error('BG.png 맵 이미지 크기를 확인해 주세요.'));
             return;
           }
@@ -148,7 +149,6 @@
           resolve();
         };
         mapImage.onerror = () => {
-          mapFailed = true;
           reject(new Error('BG.png 맵 이미지 로드 실패'));
         };
         mapImage.src = 'assets/BG.png';
@@ -157,12 +157,13 @@
 
     // 7DeathKnight: 128×128 프레임 15개씩, 원본 Unity 메타데이터의 8방향 행 순서.
     const character = { frameSize: 128, frameCount: 15, scale: 2, footX: 64, footY: 100 };
+    const actorRadius = 10;
     const enemyConfig = {
       spawnX: level.enemySpawn.x, spawnY: level.enemySpawn.y,
       walkSpeed: 95, runSpeed: 195,
       runDistance: 338, walkDistance: 260,
       attackRange: 72, attackDelay: 0.2, attackDuration: 0.7, attackCooldown: 0.45,
-      navigationRadius: 12, repathInterval: 0.25
+      navigationRadius: actorRadius, repathInterval: 0.25
     };
     const jumpPeakHeight = 48;
     const jumpDuration = 0.625;
@@ -201,7 +202,6 @@
     const slideStartDuration = 0.16;
     const slideEndDuration = 0.16;
     const directions = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
-    const directionLabels = ['동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽', '북쪽', '북동쪽'];
     const animations = {
       idle: { src: 'assets/death-knight/Idle.png', fps: 10, label: '대기' },
       walk: { src: 'assets/death-knight/Walk.png', fps: 12, label: '걷기' },
@@ -226,6 +226,7 @@
       death: { src: 'assets/knight/Die.png', fps: character.frameCount / deathDuration, loop: false }
     };
     const enemyNavigationNodes = buildEnemyNavigationNodes();
+    const enemyNavigationConnections = new WeakMap();
 
     function loadSpriteSet(definitions, target) {
       return Promise.all(Object.entries(definitions).map(([name, animation]) => new Promise((resolve, reject) => {
@@ -260,10 +261,9 @@
       })));
     }
 
-    Promise.all([loadMap(), loadSpriteSet(animations, sprites), loadSpriteSet(enemyAnimations, enemySprites), loadSwordTrail()]).then(() => {
+    Promise.all([loadMap(), loadSpriteSet(animations, sprites), loadSpriteSet(enemyAnimations, enemySprites), loadSwordTrail(), loadHealthBar()]).then(() => {
       ready = true;
     }).catch(error => {
-      loadFailed = true;
       console.error(error);
     });
 
@@ -317,26 +317,56 @@
       updateCamera(0, true);
       keys.clear();
       lastTime = null;
+      updatePlayerHealthHud(true);
     }
 
     const movementKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
     const crouchKeys = ['ControlLeft', 'ControlRight'];
     const inputKeys = [...movementKeys, 'ShiftLeft', 'ShiftRight', 'KeyC', 'Space', ...crouchKeys];
+    function getInputCode(event) {
+      if (event.code && event.code !== 'Unidentified') return event.code;
+      if (inputKeys.includes(event.key)) return event.key;
+      if (event.key === 'Shift' || event.key === 'Control') return event.key + (event.location === 2 ? 'Right' : 'Left');
+      if (event.key === ' ' || event.key === 'Spacebar') return 'Space';
+      return { w: 'KeyW', a: 'KeyA', s: 'KeyS', d: 'KeyD', c: 'KeyC' }[event.key?.toLowerCase()] || event.key || event.code;
+    }
+
     window.addEventListener('keydown', event => {
-      const isCrouchKey = crouchKeys.includes(event.code);
-      if (!inputKeys.includes(event.code) || (event.ctrlKey && !isCrouchKey && !movementKeys.includes(event.code)) || event.metaKey || event.altKey || event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
-      event.preventDefault();
-      if (player.health <= 0 || enemy.health <= 0) return;
-      // 길게 눌러도 반복하지 않으며, 동작 중에는 다른 동작으로 덮어쓰지 않습니다.
-      if (!event.repeat && !keys.has(event.code)) {
-        if (isCrouchKey && !player.jumping && !slide.active && !attack.active) player.crouching = !player.crouching;
-        if (event.code === 'Space') startJump();
-        if (event.code === 'KeyC') startSlide();
+      const code = getInputCode(event);
+      const isCrouchKey = crouchKeys.includes(code);
+      const ctrlGameKey = isCrouchKey || movementKeys.includes(code) || code === 'ShiftLeft' || code === 'ShiftRight';
+      if (document.hidden || document.hasFocus?.() === false || event.metaKey || event.altKey
+        || ['Escape', 'F11', 'Tab'].includes(code) || (event.ctrlKey && !ctrlGameKey)
+        || event.target?.closest?.('button, input, textarea, select, [contenteditable="true"]')) {
+        clearInput();
+        return;
       }
-      keys.add(event.code);
+      if (!inputKeys.includes(code)) return;
+      event.preventDefault();
+      // 포커스를 잃어 입력을 비운 뒤 도착한 자동 반복으로 키가 다시 눌린 상태가 되지 않게 합니다.
+      if (event.repeat || player.health <= 0 || enemy.health <= 0) return;
+      // 길게 눌러도 반복하지 않으며, 동작 중에는 다른 동작으로 덮어쓰지 않습니다.
+      if (!keys.has(code)) {
+        if (isCrouchKey && !player.jumping && !slide.active && !attack.active) player.crouching = !player.crouching;
+        if (code === 'Space') startJump();
+        if (code === 'KeyC') startSlide();
+      }
+      keys.add(code);
+    }, true);
+    // 캡처 단계에서 먼저 해제해 포커스가 다른 요소로 옮겨가도 키가 남지 않게 합니다.
+    window.addEventListener('keyup', event => {
+      const code = getInputCode(event);
+      if (!code || code === 'Unidentified' || code === 'Process') clearInput();
+      else keys.delete(code);
+    }, true);
+    window.addEventListener('blur', clearInput, true);
+    window.addEventListener('focus', clearInput);
+    window.addEventListener('pageshow', clearInput);
+    canvas.addEventListener('blur', clearInput);
+    canvas.addEventListener('contextmenu', clearInput);
+    document.addEventListener('focusin', event => {
+      if (event.target !== canvas) clearInput();
     });
-    window.addEventListener('keyup', event => keys.delete(event.code));
-    window.addEventListener('blur', clearInput);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) clearInput();
       lastTime = null;
@@ -370,28 +400,20 @@
     document.querySelector('#restart').addEventListener('click', () => { reset(); canvas.focus(); });
     fullscreenButton.addEventListener('click', toggleGameFullscreen);
     document.addEventListener('fullscreenchange', () => {
+      clearInput();
       if (!document.fullscreenElement) {
         navigator.keyboard?.unlock?.();
         if (keyboardProtection === 'on' || keyboardProtection === 'starting') keyboardProtection = 'off';
-        clearInput();
       }
       updateFullscreenControls();
     });
-    window.addEventListener('pagehide', () => navigator.keyboard?.unlock?.());
+    window.addEventListener('pagehide', () => { clearInput(); navigator.keyboard?.unlock?.(); });
 
     function updateFullscreenControls() {
       const active = document.fullscreenElement === document.documentElement;
       fullscreenButton.textContent = active ? '전체화면 종료' : '전체화면 게임';
       fullscreenButton.setAttribute('aria-pressed', String(active));
       fullscreenButton.disabled = fullscreenBusy;
-      const messages = {
-        off: 'Ctrl+W 보호: 전체화면 게임 버튼을 눌러 주세요.',
-        starting: '전체화면 게임 준비 중…',
-        on: 'Ctrl+W 보호 켜짐 · Esc로 전체화면 종료',
-        unsupported: '이 브라우저는 단축키 보호를 지원하지 않습니다. Ctrl을 눌렀다 떼고 이동해 주세요.',
-        failed: '단축키 보호를 켜지 못했습니다. 전체화면 게임 버튼을 다시 눌러 주세요.'
-      };
-      keyboardStatus.textContent = messages[keyboardProtection];
     }
 
     async function toggleGameFullscreen() {
@@ -437,6 +459,8 @@
 
     function clearInput() {
       keys.clear();
+      player.moving = false;
+      player.running = false;
       player.jumpBufferTime = 0;
       slide.active = false;
       stopAttackInput();
@@ -540,7 +564,8 @@
     }
 
     function groundContains(point) {
-      return level.walkableAreas.some(polygon => pointInsidePolygon(point, polygon));
+      return point.x >= 0 && point.y >= 0 && point.x <= level.width && point.y <= level.height
+        && level.walkableAreas.some(polygon => pointInsidePolygon(point, polygon));
     }
 
     function closestOnSegment(point, a, b) {
@@ -552,8 +577,11 @@
     }
 
     function getCollisionGeometry() {
-      if (collisionGeometry?.areas === level.walkableAreas && collisionGeometry.walls === level.walls) return collisionGeometry.segments;
-      const edges = level.walkableAreas.flatMap(polygon => polygon.map((a, index) => ({ a, b: polygon[(index + 1) % polygon.length] })));
+      if (collisionGeometry?.areas === level.walkableAreas && collisionGeometry.walls === level.walls
+        && collisionGeometry.width === level.width && collisionGeometry.height === level.height) return collisionGeometry.segments;
+      // 바닥 데이터가 맵 밖으로 뻗더라도 이미지 네 변에서 연속 충돌이 발생하도록 닫습니다.
+      const bounds = [{x:0,y:0}, {x:level.width,y:0}, {x:level.width,y:level.height}, {x:0,y:level.height}];
+      const edges = [...level.walkableAreas, bounds].flatMap(polygon => polygon.map((a, index) => ({ a, b: polygon[(index + 1) % polygon.length] })));
       const segments = [], seen = new Set();
       const cross = (ax, ay, bx, by) => ax * by - ay * bx;
       for (const edge of edges) {
@@ -591,7 +619,7 @@
         }
       }
       for (const wall of level.walls || []) segments.push({ ...wall, kind: 'rail' });
-      collisionGeometry = { areas: level.walkableAreas, walls: level.walls, segments };
+      collisionGeometry = { areas: level.walkableAreas, walls: level.walls, width: level.width, height: level.height, segments };
       return segments;
     }
 
@@ -644,7 +672,7 @@
       for (let contact = 0; contact < 6 && Math.hypot(remainingX, remainingY) > 0.00001; contact++) {
         let earliest = 1, hits = [];
         for (const segment of segments) {
-          const hit = sweepSegment(actor, remainingX, remainingY, segment, 10);
+          const hit = sweepSegment(actor, remainingX, remainingY, segment, actorRadius);
           if (!hit) continue;
           if (hit.time < earliest - 0.000001) { earliest = hit.time; hits = [hit]; }
           else if (Math.abs(hit.time - earliest) <= 0.000001) hits.push(hit);
@@ -775,23 +803,49 @@
 
     function isEnemyPathClear(start, end, radius = enemyConfig.navigationRadius) {
       if (!isWalkable(start, radius) || !isWalkable(end, radius)) return false;
-      return getCollisionGeometry().every(segment => segmentDistanceSquared(start, end, segment.a, segment.b) > (radius + segment.halfWidth) ** 2 + 0.00001);
+      // 이동과 같은 발밑 크기로 검사해 벽에 붙은 위치와 벽을 따라가는 경로도 허용합니다.
+      // 접촉 오차만 허용하며, 실제 벽이나 낭떠러지를 가로지르는 거리는 0이라 계속 차단합니다.
+      return getCollisionGeometry().every(segment => segmentDistanceSquared(start, end, segment.a, segment.b) > Math.max(0, (radius + segment.halfWidth) ** 2 - 0.00001));
     }
 
     function buildEnemyNavigationNodes() {
       // 계단 입구와 다리의 꺾이는 지점을 경유해 적도 같은 길을 따라옵니다.
-      return level.waypoints.filter(point => isWalkable(point, enemyConfig.navigationRadius));
+      const nodes = level.waypoints.filter(point => isWalkable(point, enemyConfig.navigationRadius));
+      // 계단 중앙뿐 아니라 난간 양옆에서도 끝을 돌아 기존 길로 합류할 수 있게 합니다.
+      for (const wall of level.walls) {
+        const radius = (enemyConfig.navigationRadius + wall.halfWidth + 0.5) / Math.cos(Math.PI / 8);
+        for (const end of [wall.a, wall.b]) {
+          for (let direction = 0; direction < 8; direction++) {
+            const angle = direction * Math.PI / 4;
+            const point = { x: end.x + Math.cos(angle) * radius, y: end.y + Math.sin(angle) * radius / 1.5 };
+            if (isWalkable(point, enemyConfig.navigationRadius) && !nodes.some(node => Math.hypot(node.x - point.x, node.y - point.y) < 0.01)) nodes.push(point);
+          }
+        }
+      }
+      return nodes;
+    }
+
+    function isEnemyNavigationLinkClear(first, second) {
+      // 고정된 경유점 사이의 충돌 검사는 재사용하고, 맵 충돌 정보가 바뀌면 새로 계산합니다.
+      const geometry = getCollisionGeometry();
+      let connections = enemyNavigationConnections.get(geometry);
+      if (!connections) { connections = new Map(); enemyNavigationConnections.set(geometry, connections); }
+      const key = Math.min(first, second) * enemyNavigationNodes.length + Math.max(first, second);
+      if (!connections.has(key)) connections.set(key, isEnemyPathClear(enemyNavigationNodes[first], enemyNavigationNodes[second]));
+      return connections.get(key);
     }
 
     function findEnemyPath(start, destination) {
+      if (!isWalkable(start, enemyConfig.navigationRadius) || !isWalkable(destination, enemyConfig.navigationRadius)) return [];
       if (isEnemyPathClear(start, destination)) return [{ x: destination.x, y: destination.y }];
       const nodes = [{ x: start.x, y: start.y }, ...enemyNavigationNodes, { x: destination.x, y: destination.y }];
+      const remaining = nodes.map(point => Math.hypot(destination.x - point.x, destination.y - point.y));
       const costs = nodes.map(() => Infinity), previous = nodes.map(() => -1), visited = new Set();
       costs[0] = 0;
       for (let iteration = 0; iteration < nodes.length; iteration++) {
         let current = -1;
         for (let i = 0; i < nodes.length; i++) {
-          if (!visited.has(i) && (current < 0 || costs[i] < costs[current])) current = i;
+          if (!visited.has(i) && (current < 0 || costs[i] + remaining[i] < costs[current] + remaining[current])) current = i;
         }
         if (current < 0 || !Number.isFinite(costs[current])) break;
         if (current === nodes.length - 1) {
@@ -803,9 +857,11 @@
         for (let next = 1; next < nodes.length; next++) {
           if (visited.has(next)) continue;
           const cost = costs[current] + Math.hypot(nodes[next].x - nodes[current].x, nodes[next].y - nodes[current].y);
-          if (cost < costs[next] && isEnemyPathClear(nodes[current], nodes[next])) {
-            costs[next] = cost;
-            previous[next] = current;
+          if (cost < costs[next]) {
+            const clear = current === 0 || next === nodes.length - 1
+              ? isEnemyPathClear(nodes[current], nodes[next])
+              : isEnemyNavigationLinkClear(current - 1, next - 1);
+            if (clear) { costs[next] = cost; previous[next] = current; }
           }
         }
       }
@@ -858,15 +914,18 @@
       const direct = isEnemyPathClear(enemy, player);
       if (direct) {
         enemy.path = [];
+        enemy.pathTimer = 0;
         waypoint = player;
       } else {
-        if (!enemy.path.length || enemy.pathTimer <= 0 || Math.hypot(player.x - enemy.pathTargetX, player.y - enemy.pathTargetY) > 24) {
+        if (enemy.pathTimer <= 0 || Math.hypot(player.x - enemy.pathTargetX, player.y - enemy.pathTargetY) > 24) {
           enemy.path = findEnemyPath(enemy, player);
           enemy.pathTimer = enemyConfig.repathInterval;
           enemy.pathTargetX = player.x;
           enemy.pathTargetY = player.y;
         }
-        while (enemy.path.length && Math.hypot(enemy.path[0].x - enemy.x, enemy.path[0].y - enemy.y) < 2) enemy.path.shift();
+        // 난간 끝에서 경유점을 너무 일찍 넘겨 다음 구간의 모서리를 가로지르지 않게 합니다.
+        while (enemy.path.length && Math.hypot(enemy.path[0].x - enemy.x, enemy.path[0].y - enemy.y) < 2
+          && (enemy.path.length === 1 || isEnemyPathClear(enemy, enemy.path[1]))) enemy.path.shift();
         waypoint = enemy.path[0];
       }
       if (!waypoint) { setEnemyAnimation('idle', dt); return; }
@@ -890,6 +949,8 @@
 
     function update(dt) {
       if (!ready) return;
+      // 브라우저가 blur 이벤트를 놓쳐도 다음 프레임에서 남아 있는 입력을 정리합니다.
+      if (document.hidden || document.hasFocus?.() === false) clearInput();
       for (const actor of [player, enemy]) actor.hitFlash = Math.max(0, actor.hitFlash - dt);
       for (let index = hitEffects.length - 1; index >= 0; index--) {
         hitEffects[index].time += dt;
@@ -1061,6 +1122,39 @@
       }
     }
 
+    function updatePlayerHealthHud(force = false) {
+      const health = Math.max(0, Math.min(combat.maxHealth, player.health));
+      if (force || health !== lastHudHealth) {
+        const value = Math.ceil(health) + ' / ' + combat.maxHealth;
+        playerHealthBar.setAttribute('aria-valuenow', String(health));
+        playerHealthBar.setAttribute('aria-valuemax', String(combat.maxHealth));
+        playerHealthBar.setAttribute('aria-valuetext', value);
+        playerHealthHud.dataset.state = health <= 0 ? 'dead' : health <= combat.maxHealth * 0.25 ? 'low' : 'normal';
+        if (healthBarReady) {
+          playerHealthCtx.clearRect(0, 0, 656, 46);
+          playerHealthCtx.imageSmoothingEnabled = false;
+          // 맨 위의 붉은 체력바에서 바깥 배경을 분리한 투명 PNG를 사용합니다.
+          playerHealthCtx.drawImage(healthBarImage, 48, 280, 2076, 144, 0, 0, 656, 46);
+          // 원본의 빈 구간과 붉은 구간을 테두리 안쪽에만 그려 실제 체력에 맞춥니다.
+          playerHealthCtx.save();
+          playerHealthCtx.beginPath();
+          playerHealthCtx.moveTo(16, 16); playerHealthCtx.lineTo(635, 16);
+          playerHealthCtx.lineTo(640, 29); playerHealthCtx.lineTo(16, 29);
+          playerHealthCtx.closePath(); playerHealthCtx.clip();
+          playerHealthCtx.drawImage(healthBarImage, 1550, 331, 120, 40, 16, 16, 624, 13);
+          const fillWidth = Math.floor(624 * health / combat.maxHealth);
+          if (fillWidth > 0) playerHealthCtx.drawImage(healthBarImage, 300, 331, 740, 40, 16, 16, fillWidth, 13);
+          playerHealthCtx.restore();
+        }
+        lastHudHealth = health;
+      }
+      const hit = player.hitFlash > 0;
+      if (force || hit !== lastHudHit) {
+        playerHealthHud.dataset.hit = String(hit);
+        lastHudHit = hit;
+      }
+    }
+
     function drawHealthBar(actor, color) {
       if (!ready || actor.health <= 0 || actor.health >= combat.maxHealth) return;
       const x = Math.round(actor.x - camera.x), y = Math.round(actor.y - camera.y - (actor.jumpHeight || 0) - 130);
@@ -1123,14 +1217,10 @@
         else drawActor(player, sprites, animations);
       }
 
-      drawHealthBar(player, '#b3a0ff');
+      updatePlayerHealthHud();
       drawHealthBar(enemy, '#b91c1c');
       drawHitEffects();
 
-      const movementStatus = mapFailed ? '맵을 불러오지 못했습니다. assets/BG.png를 확인해 주세요.' : loadFailed ? '캐릭터를 불러오지 못했습니다. assets 폴더를 확인해 주세요.' : !ready ? '캐릭터 불러오는 중…' : animations[player.animation].label + ' · ' + directionLabels[directions.indexOf(player.facing)];
-      const result = !ready ? '' : player.health <= 0 && enemy.health <= 0 ? '무승부 · 위치 초기화로 다시 시작' : player.health <= 0 ? '패배 · 위치 초기화로 다시 시작' : enemy.health <= 0 ? '승리 · 위치 초기화로 다시 시작' : '';
-      const status = result || movementStatus;
-      if (status !== lastStatus) { statusLabel.textContent = status; lastStatus = status; }
     }
 
     function frame(time) {

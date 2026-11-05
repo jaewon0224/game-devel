@@ -1,0 +1,6 @@
+Source: ../../../health bar.jpg
+Tool: built-in image_gen, transparent_background=true
+Output: health-bar-red-transparent.png
+Display crop in source pixels: x=48, y=280, width=2076, height=144
+
+Edit target: the uploaded health bar sheet. Extract ONLY the FIRST, TOPMOST narrow red fantasy health bar, which lies approximately at x=70..725, y=14..54 in this 791x976 source. Make the surrounding background genuinely transparent. Preserve the exact red metal frame, jagged ornamental details, dark empty right half and bright red filled left half, proportions and visible markings. This is a precise cutout, not a redesign. Preserve any existing diagonal watermark lines wherever they cross the health bar; do not remove, retouch or conceal any watermark or copyright marking. Exclude all the other bars, the sheet background, and the title. Output one isolated, very wide horizontal red bar with a transparent background, tightly framed with small even transparent margins. Do not add any text, HP label, numbers, badges, decorative panels, extra shadows, or any other element.
